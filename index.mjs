@@ -11,6 +11,7 @@ import { callTokenUri } from "./call-tokenuri.mjs";
 import { getTokenUri } from "./get-tokenuri.mjs";
 import { musicOs } from "./music-os.mjs";
 
+// For demo purposes
 const FROM = "0xf1cd98";
 const TO = "0xf1cd99";
 
