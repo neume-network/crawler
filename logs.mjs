@@ -1,3 +1,4 @@
+import pMap from "p-map";
 import { env } from "process";
 import { messages } from "./extraction-worker/src/api.mjs";
 import { contracts } from "./contracts.mjs";
@@ -61,11 +62,16 @@ export async function callBlockLogs(from, to) {
   from = parseInt(from, "16");
   to = parseInt(to, "16");
 
-  let messages = [];
+  const blocks = [];
   for (let i = from; i < to; i++) {
-    const block = toHex(i);
-    messages.push(
-      route({
+    blocks.push(i);
+  }
+
+  const messages = await pMap(
+    blocks,
+    async (i) => {
+      const block = toHex(i);
+      return await route({
         type: "json-rpc",
         method: "eth_getLogs",
         params: [
@@ -76,11 +82,11 @@ export async function callBlockLogs(from, to) {
         ],
         version: "0.0.1",
         options,
-      })
-    );
-  }
+      });
+    },
+    { concurrency: parseInt(env.EXTRACTION_WORKER_CONCURRENCY) }
+  );
 
-  messages = await Promise.all(messages);
   const logs = messages.map(({ results }) => results).flat();
   return filterLogs(logs);
 }

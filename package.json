@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.mjs",
   "scripts": {
-    "dev": "node -r dotenv/config index.mjs",
+    "dev": "DEBUG=* node -r dotenv/config index.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +13,7 @@
   "dependencies": {
     "dotenv": "^16.0.3",
     "eth-fun": "^0.9.2",
+    "p-map": "^5.5.0",
     "sqlite": "^4.1.2",
     "sqlite3": "^5.1.2"
   }

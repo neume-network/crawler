@@ -61,30 +61,18 @@ function makeRequest(
   };
 }
 
-export async function callTokenUris(nfts) {
-  const ids = Object.keys(nfts);
-
-  const msgs = await Promise.all(
-    ids.map(async (id) => {
-      const nft = nfts[id];
-      const msg = await route(
-        makeRequest(
-          nft.erc721.tokens[0].id,
-          nft.erc721.createdAt,
-          nft.erc721.address,
-          signature,
-          nft.erc721.tokens[0].transactionHash
-        )
-      );
-
-      nft.erc721.tokens[0].tokenURI = decodeParameters(
-        ["string"],
-        msg.results
-      )[0];
-
-      return nft;
-    })
+export async function callTokenUri(nft) {
+  const msg = await route(
+    makeRequest(
+      nft.erc721.tokens[0].id,
+      nft.erc721.createdAt,
+      nft.erc721.address,
+      signature,
+      nft.erc721.tokens[0].transactionHash
+    )
   );
 
-  return msgs;
+  nft.erc721.tokens[0].tokenURI = decodeParameters(["string"], msg.results)[0];
+
+  return nft;
 }

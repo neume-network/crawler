@@ -14,16 +14,8 @@ function makeRequest(tokenURI) {
   };
 }
 
-export async function getTokenUris(nfts) {
-  nfts = Object.values(nfts);
-
-  const msgs = await Promise.all(
-    nfts.map(async (nft) => {
-      const msg = await route(makeRequest(nft.erc721.tokens[0].tokenURI));
-      nft.erc721.tokens[0].tokenURIContent = msg.results;
-      return nft;
-    })
-  );
-
-  return msgs;
+export async function getTokenUri(nft) {
+  const msg = await route(makeRequest(nft.erc721.tokens[0].tokenURI));
+  nft.erc721.tokens[0].tokenURIContent = msg.results;
+  return nft;
 }

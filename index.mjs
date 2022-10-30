@@ -1,13 +1,31 @@
 import { callBlockLogs } from "./logs.mjs";
 import util from "util";
+import { env } from "process";
+import {
+  endpointStore,
+  populateEndpointStore,
+} from "./extraction-worker/src/endpoint_store.mjs";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
-import { callTokenUris } from "./call-tokenuri.mjs";
-import { getTokenUris } from "./get-tokenuri.mjs";
+import { callTokenUri } from "./call-tokenuri.mjs";
+import { getTokenUri } from "./get-tokenuri.mjs";
 import { musicOs } from "./music-os.mjs";
 
 const FROM = "0xf1cd98";
 const TO = "0xf1cd99";
+
+populateEndpointStore(endpointStore, {
+  [env.RPC_HTTP_HOST]: {
+    timeout: 10_000,
+    requestsPerUnit: 500,
+    unit: "second",
+  },
+  [env.ARWEAVE_HTTPS_GATEWAY]: {
+    timeout: 30_000,
+    requestsPerUnit: 500,
+    unit: "second",
+  },
+});
 
 const db = await open({
   filename: "./.db",
@@ -32,33 +50,72 @@ const oldNfts = rows.reduce((oldNfts, row) => {
 }, {});
 
 const newNFTs = await callBlockLogs(FROM, TO);
-let nfts = { ...oldNfts, ...newNFTs };
-let ids = Object.keys(nfts);
+const mergeNFTs = { ...oldNfts, ...newNFTs };
+
+let nfts = Object.keys(mergeNFTs).map((id) => {
+  return {
+    id,
+    ...mergeNFTs[id],
+  };
+});
 
 await Promise.all(
-  ids.map((id) => {
+  nfts.map((nft) => {
+    const data = { ...nft };
+    delete data.id;
     return db.run(
       "INSERT OR REPLACE INTO pending_nfts (id, data) VALUES (?, ?)",
-      id,
-      JSON.stringify(nfts[id])
+      nft.id,
+      JSON.stringify(data)
     );
   })
 );
 
-await callTokenUris(nfts);
-await getTokenUris(nfts);
-const tracks = musicOs(nfts);
+nfts = (
+  await Promise.all(
+    nfts.map(async (nft) => {
+      try {
+        return await callTokenUri(nft);
+      } catch (err) {
+        console.log(`Error occured in call-tokenuri with id=${nft.id}`, err);
+      }
+    })
+  )
+).filter(Boolean);
+
+nfts = (
+  await Promise.all(
+    nfts.map(async (nft) => {
+      try {
+        return await getTokenUri(nft);
+      } catch (err) {
+        console.log(`Error occured in get-tokenuri with id=${nft.id}`, err);
+      }
+    })
+  )
+).filter(Boolean);
+
+const tracks = nfts
+  .map((nft) => {
+    try {
+      return musicOs(nft);
+    } catch (err) {
+      console.log(`Error occured in  with id=${nft.id}`, err);
+    }
+  })
+  .filter(Boolean);
 
 await Promise.all(
-  Object.keys(tracks).map((id) => {
-    const track = tracks[id];
+  tracks.map((track) => {
+    const data = { ...track };
+    delete data.id;
 
     return Promise.all([
-      db.run("DELETE FROM pending_nfts WHERE id=?", id),
+      db.run("DELETE FROM pending_nfts WHERE id=?", track.id),
       db.run(
         "INSERT OR REPLACE INTO tracks (id, data) VALUES (?,?)",
-        id,
-        JSON.stringify(track)
+        track.id,
+        JSON.stringify(data)
       ),
     ]);
   })
@@ -66,3 +123,6 @@ await Promise.all(
 
 console.log(await db.all(`SELECT * FROM pending_nfts`));
 console.log(await db.all(`SELECT * FROM tracks`));
+
+// console.log(util.inspect(nfts, false, null, true));
+// process.exit();
