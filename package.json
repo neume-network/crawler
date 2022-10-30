@@ -5,6 +5,7 @@
   "main": "index.mjs",
   "scripts": {
     "dev": "DEBUG=* node -r dotenv/config index.mjs",
+    "postinstall": "cd ./extraction-worker && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
