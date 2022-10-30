@@ -14,6 +14,7 @@ import { musicOs } from "./music-os.mjs";
 const FROM = "0xf1cd98";
 const TO = "0xf1cd99";
 
+// This is used by extraction-worker for rate limiting
 populateEndpointStore(endpointStore, {
   [env.RPC_HTTP_HOST]: {
     timeout: 10_000,
@@ -27,6 +28,7 @@ populateEndpointStore(endpointStore, {
   },
 });
 
+// Initialize database
 const db = await open({
   filename: "./.db",
   driver: sqlite3.cached.Database,
@@ -43,6 +45,11 @@ await db.run(`CREATE TABLE IF NOT EXISTS tracks (
   data JSON NOT NULL
 )`);
 
+// The program can crash in between or some NFTs
+// can fail to be crawled. For them, I mantain a
+// pending_nfts table.
+// The newly found NFTs and old pending NFTs are
+// later merged to form a single NFTs object.
 const rows = await db.all(`SELECT * from pending_nfts`);
 const oldNfts = rows.reduce((oldNfts, row) => {
   oldNfts[row.id] = JSON.parse(row.data);
@@ -52,6 +59,10 @@ const oldNfts = rows.reduce((oldNfts, row) => {
 const newNFTs = await callBlockLogs(FROM, TO);
 const mergeNFTs = { ...oldNfts, ...newNFTs };
 
+// This is the list of all NFTs to be crawled.
+// With each step additional information gets
+// added to each NFT. For example, in the first
+// tokenURI gets added.
 let nfts = Object.keys(mergeNFTs).map((id) => {
   return {
     id,
