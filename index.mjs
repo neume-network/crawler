@@ -10,6 +10,7 @@ import { open } from "sqlite";
 import { callTokenUri } from "./call-tokenuri.mjs";
 import { getTokenUri } from "./get-tokenuri.mjs";
 import { musicOs } from "./music-os.mjs";
+import { DB } from "./database/index.js";
 
 // For demo purposes
 const FROM = "0xf1cd98";
@@ -30,32 +31,18 @@ populateEndpointStore(endpointStore, {
 });
 
 // Initialize database
-const db = await open({
-  filename: "./.db",
-  driver: sqlite3.cached.Database,
-});
-db.getDatabaseInstance().parallelize();
-
-await db.run(`CREATE TABLE IF NOT EXISTS pending_nfts (
-  id TEXT PRIMARY KEY NOT NULL,
-  data JSON NOT NULL
-)`);
-
-await db.run(`CREATE TABLE IF NOT EXISTS tracks (
-  id TEXT PRIMARY KEY NOT NULL,
-  data JSON NOT NULL
-)`);
+const pendingDb = new DB("./database/pending_tracks");
+const db = new DB("./database/tracks");
 
 // The program can crash in between or some NFTs
 // can fail to be crawled. For them, I mantain a
 // pending_nfts table.
 // The newly found NFTs and old pending NFTs are
 // later merged to form a single NFTs object.
-const rows = await db.all(`SELECT * from pending_nfts`);
-const oldNfts = rows.reduce((oldNfts, row) => {
-  oldNfts[row.id] = JSON.parse(row.data);
-  return oldNfts;
-}, {});
+const oldNfts = {};
+for await (const [id, value] of pendingDb.level.iterator()) {
+  oldNfts[id] = value;
+}
 
 const newNFTs = await callBlockLogs(FROM, TO);
 const mergeNFTs = { ...oldNfts, ...newNFTs };
@@ -75,10 +62,14 @@ await Promise.all(
   nfts.map((nft) => {
     const data = { ...nft };
     delete data.id;
-    return db.run(
-      "INSERT OR REPLACE INTO pending_nfts (id, data) VALUES (?, ?)",
-      nft.id,
-      JSON.stringify(data)
+    return pendingDb.insert(
+      {
+        chainId: 1,
+        address: nft.erc721.address,
+        tokenId: nft.erc721.tokens[0].id,
+        blockNumber: nft.erc721.createdAt,
+      },
+      data
     );
   })
 );
@@ -123,18 +114,23 @@ await Promise.all(
     delete data.id;
 
     return Promise.all([
-      db.run("DELETE FROM pending_nfts WHERE id=?", track.id),
-      db.run(
-        "INSERT OR REPLACE INTO tracks (id, data) VALUES (?,?)",
-        track.id,
-        JSON.stringify(data)
+      pendingDb.level.clear(),
+      db.insert(
+        {
+          chainId: 1,
+          blockNumber: track.erc721.createdAt,
+          address: track.erc721.address,
+          tokenId: track.erc721.tokenId,
+        },
+        data
       ),
     ]);
   })
 );
 
-console.log(await db.all(`SELECT * FROM pending_nfts`));
-console.log(await db.all(`SELECT * FROM tracks`));
+for await (const [id, value] of db.level.iterator()) {
+  console.log(id, value);
+}
 
 // console.log(util.inspect(nfts, false, null, true));
 // process.exit();
