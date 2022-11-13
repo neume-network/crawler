@@ -64,15 +64,15 @@ function makeRequest(
 export async function callTokenUri(nft) {
   const msg = await route(
     makeRequest(
-      nft.erc721.tokens[0].id,
+      nft.erc721.token.id,
       nft.erc721.createdAt,
       nft.erc721.address,
       signature,
-      nft.erc721.tokens[0].transactionHash
+      nft.erc721.token.transactionHash
     )
   );
 
-  nft.erc721.tokens[0].tokenURI = decodeParameters(["string"], msg.results)[0];
+  nft.erc721.token.tokenURI = decodeParameters(["string"], msg.results)[0];
 
   return nft;
 }

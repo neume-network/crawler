@@ -15,7 +15,7 @@ function makeRequest(tokenURI) {
 }
 
 export async function getTokenUri(nft) {
-  const msg = await route(makeRequest(nft.erc721.tokens[0].tokenURI));
-  nft.erc721.tokens[0].tokenURIContent = msg.results;
+  const msg = await route(makeRequest(nft.erc721.token.tokenURI));
+  nft.erc721.token.tokenURIContent = msg.results;
   return nft;
 }

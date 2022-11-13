@@ -39,21 +39,20 @@ function filterLogs(logs) {
         erc721: {
           createdAt: parseInt(log.blockNumber, 16),
           address: log.address,
-          tokens: [
-            {
-              minting: {
-                transactionHash: log.transactionHash,
-              },
-              id: BigInt(log.topics[3]).toString(10),
+          token: {
+            minting: {
+              transactionHash: log.transactionHash,
             },
-          ],
+            id: BigInt(log.topics[3]).toString(10),
+          },
         },
       };
     })
     .reduce((nfts, nft) => {
       return {
         ...nfts,
-        [`${nft.erc721.address}/${nft.erc721.tokens[0].id}`]: nft,
+        [`1/${nft.erc721.address}/${nft.erc721.token.id}/${nft.erc721.createdAt}`]:
+          nft,
       };
     }, {});
 }

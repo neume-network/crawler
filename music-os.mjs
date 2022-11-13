@@ -1,7 +1,7 @@
 const version = "0.1.0";
 
 export function musicOs(nft) {
-  const datum = nft.erc721.tokens[0].tokenURIContent;
+  const datum = nft.erc721.token.tokenURIContent;
 
   return {
     id: nft.id,
@@ -21,9 +21,9 @@ export function musicOs(nft) {
       // TODO: Stop hard coding this value
       // owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
       createdAt: nft.erc721.createdAt,
-      tokenId: nft.erc721.tokens[0].id,
+      tokenId: nft.erc721.token.id,
       address: nft.erc721.address,
-      tokenURI: nft.erc721.tokens[0].tokenURI,
+      tokenURI: nft.erc721.token.tokenURI,
       metadata: {
         ...datum,
       },

@@ -1,12 +1,9 @@
 import { callBlockLogs } from "./logs.mjs";
-import util from "util";
 import { env } from "process";
 import {
   endpointStore,
   populateEndpointStore,
 } from "./extraction-worker/src/endpoint_store.mjs";
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
 import { callTokenUri } from "./call-tokenuri.mjs";
 import { getTokenUri } from "./get-tokenuri.mjs";
 import { musicOs } from "./music-os.mjs";
@@ -46,6 +43,7 @@ for await (const [id, value] of pendingDb.level.iterator()) {
 
 const newNFTs = await callBlockLogs(FROM, TO);
 const mergeNFTs = { ...oldNfts, ...newNFTs };
+console.log(mergeNFTs);
 
 // This is the list of all NFTs to be crawled.
 // With each step additional information gets
@@ -66,7 +64,7 @@ await Promise.all(
       {
         chainId: 1,
         address: nft.erc721.address,
-        tokenId: nft.erc721.tokens[0].id,
+        tokenId: nft.erc721.token.id,
         blockNumber: nft.erc721.createdAt,
       },
       data
