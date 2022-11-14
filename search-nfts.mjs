@@ -57,7 +57,7 @@ function filterLogs(logs) {
     }, {});
 }
 
-export async function callBlockLogs(from, to) {
+export async function searchNfts(from, to, cb) {
   from = parseInt(from, "16");
   to = parseInt(to, "16");
 
@@ -66,11 +66,11 @@ export async function callBlockLogs(from, to) {
     blocks.push(i);
   }
 
-  const messages = await pMap(
+  await pMap(
     blocks,
     async (i) => {
       const block = toHex(i);
-      return await route({
+      const message = await route({
         type: "json-rpc",
         method: "eth_getLogs",
         params: [
@@ -82,10 +82,30 @@ export async function callBlockLogs(from, to) {
         version: "0.0.1",
         options,
       });
+      const log = message.results;
+      if (
+        log.topics[0] === transferEventSelector &&
+        log.topics[1] === emptyB32 &&
+        Object.keys(contracts).includes(log.address)
+      ) {
+        const nft = {
+          platform: {
+            ...contracts[log.address],
+          },
+          erc721: {
+            createdAt: parseInt(log.blockNumber, 16),
+            address: log.address,
+            token: {
+              minting: {
+                transactionHash: log.transactionHash,
+              },
+              id: BigInt(log.topics[3]).toString(10),
+            },
+          },
+        };
+        cb(nft);
+      }
     },
     { concurrency: parseInt(env.EXTRACTION_WORKER_CONCURRENCY) }
   );
-
-  const logs = messages.map(({ results }) => results).flat();
-  return filterLogs(logs);
 }

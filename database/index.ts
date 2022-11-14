@@ -80,6 +80,10 @@ export class DB {
     return this.level.put(this.datumToKey(datum), data);
   }
 
+  async del(datum: Datum) {
+    return this.level.del(this.datumToKey(datum));
+  }
+
   async flush() {}
 }
 
