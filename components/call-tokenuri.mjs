@@ -1,4 +1,4 @@
-import { messages } from "./extraction-worker/src/api.mjs";
+import { messages } from "../extraction-worker/src/api.mjs";
 import { encodeFunctionCall, decodeParameters, toHex } from "eth-fun";
 import { env } from "process";
 

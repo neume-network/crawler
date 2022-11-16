@@ -1,4 +1,8 @@
 {
+  "0x0bc2a24ce568dad89691116d5b34deb6c203f342": {
+    "name": "catalog",
+    "version": "2.0.0"
+  },
   "0x74abe65c9e2a8acbc757bccf3f18f5275b56ccb3": {
     "name": "sound-protocol"
   },

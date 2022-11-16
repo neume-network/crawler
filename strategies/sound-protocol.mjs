@@ -1,6 +1,6 @@
 import { decodeLog } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.mjs";
-import { getTokenUri } from "../components/get-tokenuri.mjs";
+import { getArweaveTokenUri } from "../components/get-arweave-tokenuri.mjs";
 
 export const editionCreatedSelector =
   "0x405098db99342b699216d8150e930dbbf2f686f5a43485aed1e69219dafd4935";
@@ -51,9 +51,10 @@ export function extractSoundProtocolContract(log) {
 
 export async function crawl(nft) {
   await callTokenUri(nft);
-  await getTokenUri(nft);
+  await getArweaveTokenUri(nft);
 
   const datum = nft.erc721.token.tokenURIContent;
+  const version = "1.0.0";
 
   return {
     version,

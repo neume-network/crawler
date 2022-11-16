@@ -219,4 +219,5 @@ async function filterContracts(from, to) {
 await filterContracts(FROM, TO);
 console.log("filtered", contracts);
 await callLogs(FROM, TO);
+await db.level.close();
 // await retryPendingNfts();
