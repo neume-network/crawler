@@ -1,5 +1,8 @@
-import { callTokenUri } from "../components/call-tokenuri.mjs";
-import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.mjs";
+// @ts-nocheck
+// This file is incomplete
+
+import { callTokenUri } from "../components/call-tokenuri.js";
+import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
 
 export async function crawl(nft) {
   console.log("crawling catalog");

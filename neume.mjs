@@ -8,12 +8,21 @@ import "dotenv/config";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import crawl from "./commands/crawl.mjs";
+import crawl from "./commands/crawl.js";
+import filterContracts from "./commands/filter_contracts.js";
+import { config } from "./config.js";
 
 const argv = yargs(hideBin(process.argv))
   .usage("Usage: $0 <command> --from [num]")
   .usage("Usage: $0 <command> --from [num] --to [num]")
-  .command("crawl", "Find new NFTs", crawl)
+  .command(
+    "crawl",
+    "Find new NFTs from the list of already known contracts",
+    (args) => crawl(parseInt(args.argv.from), parseInt(args.argv.to), config)
+  )
+  .command("filter-contracts", "Find new contracts", (args) =>
+    filterContracts(parseInt(args.argv.from), parseInt(args.argv.to), config)
+  )
   .describe("from", "Start the crawl from this block number")
   .describe(
     "to",
