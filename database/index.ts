@@ -86,26 +86,3 @@ export class DB {
 
   async flush() {}
 }
-
-(async () => {
-  const db = new DB("./db");
-  const datum = {
-    chainId: "1",
-    address: "0xabcdef",
-    tokenId: "44",
-    blockNumber: "111",
-  };
-  await db.insert({ ...datum, chainId: "2" }, "yo-world");
-  await db.insert({ ...datum, tokenId: "140" }, "bye-world");
-  await db.insert({...datum, blockNumber: "113"}, "hello-earth");
-  await db.insert(datum, "hello-world");
-
-  const ret = await db.get({
-    chainId: "1",
-    address: "0xabcdef",
-    blockNumber: '114'
-    // tokenId: "140",
-  });
-
-  console.log(!Array.isArray(ret) && ret.value);
-})();
