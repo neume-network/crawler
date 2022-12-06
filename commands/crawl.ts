@@ -94,6 +94,7 @@ export default async function (from: number, to: number, config: Config) {
           const strategy = strategies.find((s) => s.name === nft.platform.name);
 
           const track = await strategy?.crawl(nft);
+          // TODO: Save this track to database
           console.log(track?.title);
         })
       );
