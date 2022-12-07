@@ -5,6 +5,7 @@ import { readFile, writeFile } from "fs/promises";
 import SoundProtocol from "../strategies/sound_protocol.js";
 import { Strategy } from "../strategies/strategy.types.js";
 import { Config } from "../types.js";
+import { getStrategies } from "../config.js";
 
 const STEP = 799;
 
@@ -24,7 +25,7 @@ export default async function (from: number, to: number, config: Config) {
 
   const worker = ExtractionWorker(config.worker);
 
-  const strategies: Array<Strategy> = [new SoundProtocol(worker, config)];
+  const strategies = getStrategies(from, to).map((s) => new s(worker, config));
 
   for (let i = from; i <= to; i += STEP) {
     const fromBlock = i;

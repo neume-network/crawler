@@ -9,6 +9,7 @@ import { Strategy } from "../strategies/strategy.types.js";
 import { resolve } from "path";
 import { JsonRpcLog, NFT, Config } from "../types.js";
 import { randomItem } from "../utils.js";
+import { getStrategies } from "../config.js";
 
 // For demo purposes
 const STEP = 799;
@@ -25,8 +26,7 @@ export default async function (from: number, to: number, config: Config) {
   );
 
   const worker = ExtractionWorker(config.worker);
-
-  const strategies: Array<Strategy> = [new SoundProtocol(worker, config)];
+  const strategies = getStrategies(from, to).map((s) => new s(worker, config));
 
   for (let i = from; i <= to; i += STEP) {
     const fromBlock = i;
@@ -91,7 +91,9 @@ export default async function (from: number, to: number, config: Config) {
             },
           };
 
-          const strategy = strategies.find((s) => s.name === nft.platform.name);
+          const strategy = strategies.find(
+            (s) => s.constructor.name === nft.platform.name
+          );
 
           const track = await strategy?.crawl(nft);
           // TODO: Save this track to database
