@@ -3,7 +3,20 @@ import { Track } from "@neume-network/schema";
 import { Config, Contract, NFT } from "../types";
 
 export declare class Strategy {
-  public name: string;
+  public static version: string;
+  /**
+   * Neume will not include the strategy in the crawl
+   * if the range of the crawl is not included in between
+   * createdAtBlock and deprecatedAtBlock, both inclusive.
+   */
+  public static createdAtBlock: number;
+  /**
+   * Neume will not include the strategy in the crawl
+   * if the range of the crawl is not included in between
+   * createdAtBlock and deprecatedAtBlock, both inclusive.
+   */
+  public static deprecatedAtBlock: number | null;
+
   constructor(worker: ExtractionWorkerHandler, config: Config);
 
   /**

@@ -7,8 +7,9 @@ import { Strategy } from "./strategy.types.js";
 import { randomItem } from "../utils.js";
 
 export default class SoundProtocol implements Strategy {
-  public version = "1.0.0";
-  public name = "sound-protocol";
+  public static version = "1.0.0";
+  public static createdAtBlock = 15570834;
+  public static deprecatedAtBlock = null;
   private worker: ExtractionWorkerHandler;
   private config: Config;
 
@@ -38,7 +39,7 @@ export default class SoundProtocol implements Strategy {
     const message = await this.worker({
       type: "json-rpc",
       method: "eth_getLogs",
-      commissioner: this.name,
+      commissioner: SoundProtocol.name,
       params: [
         {
           fromBlock,
@@ -53,7 +54,7 @@ export default class SoundProtocol implements Strategy {
     if (message.error) {
       throw new Error(
         `Error occured while filtering ${
-          this.name
+          SoundProtocol.name
         } contracts: \n${JSON.stringify(message, null, 2)}`
       );
     }
@@ -77,8 +78,8 @@ export default class SoundProtocol implements Strategy {
       );
       return {
         address: result.soundEdition.toLowerCase(),
-        name: this.name,
-        version: this.version,
+        name: SoundProtocol.name,
+        version: SoundProtocol.version,
       };
     });
   };
@@ -104,19 +105,19 @@ export default class SoundProtocol implements Strategy {
     const datum = nft.erc721.token.uriContent;
 
     return {
-      version: this.version,
+      version: SoundProtocol.version,
       title: datum.name,
       artist: {
-        version: this.version,
+        version: SoundProtocol.version,
         name: datum.artist,
       },
       platform: {
-        version: this.version,
+        version: SoundProtocol.version,
         name: "Sound Protocol",
         uri: "https://sound.xyz",
       },
       erc721: {
-        version: this.version,
+        version: SoundProtocol.version,
         createdAt: nft.erc721.createdAt,
         // TODO: Stop hard coding this value
         owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
@@ -132,12 +133,12 @@ export default class SoundProtocol implements Strategy {
       },
       manifestations: [
         {
-          version: this.version,
+          version: SoundProtocol.version,
           uri: datum.losslessAudio,
           mimetype: "audio",
         },
         {
-          version: this.version,
+          version: SoundProtocol.version,
           uri: datum.image,
           mimetype: "image",
         },
