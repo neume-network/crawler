@@ -2,12 +2,8 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import { env } from "process";
 import { readFile, writeFile } from "fs/promises";
 
-import SoundProtocol from "../strategies/sound_protocol.js";
-import { Strategy } from "../strategies/strategy.types.js";
 import { Config } from "../types.js";
 import { getStrategies } from "../config.js";
-
-const STEP = 799;
 
 const rpcApiKeys = env.RPC_API_KEYS?.split(",");
 const rpcHosts = env.RPC_HTTP_HOSTS?.split(",").map((host, i) => ({
@@ -27,12 +23,14 @@ export default async function (from: number, to: number, config: Config) {
 
   const strategies = getStrategies(from, to).map((s) => new s(worker, config));
 
-  for (let i = from; i <= to; i += STEP) {
+  for (let i = from; i <= to; i += config.step.block) {
     const fromBlock = i;
-    const toBlock = Math.min(to, i + STEP);
+    const toBlock = Math.min(to, i + config.step.block);
 
     await Promise.all(
       strategies.map(async (strategy) => {
+        if (!strategy.filterContracts) return;
+
         const newContracts = await strategy.filterContracts(fromBlock, toBlock);
         newContracts.forEach((contract) => {
           contracts[contract.address] = {

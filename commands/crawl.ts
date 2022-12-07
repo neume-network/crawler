@@ -1,19 +1,12 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
-import { env } from "process";
-import { readFile, writeFile } from "fs/promises";
+import { readFile } from "fs/promises";
 import { toHex } from "eth-fun";
 
 import { DB } from "../database/index.js";
-import SoundProtocol from "../strategies/sound_protocol.js";
-import { Strategy } from "../strategies/strategy.types.js";
-import { resolve } from "path";
 import { JsonRpcLog, NFT, Config } from "../types.js";
 import { randomItem } from "../utils.js";
 import { getStrategies } from "../config.js";
 
-// For demo purposes
-const STEP = 799;
-const CONTRACT_STEP = 100;
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
@@ -28,13 +21,20 @@ export default async function (from: number, to: number, config: Config) {
   const worker = ExtractionWorker(config.worker);
   const strategies = getStrategies(from, to).map((s) => new s(worker, config));
 
-  for (let i = from; i <= to; i += STEP) {
+  for (let i = from; i <= to; i += config.step.block) {
     const fromBlock = i;
-    const toBlock = Math.min(to, i + STEP);
+    const toBlock = Math.min(to, i + config.step.block);
     console.log("Crawling from", fromBlock, "to", toBlock);
 
-    for (let j = 0; j < Object.keys(contracts).length; j += CONTRACT_STEP) {
-      const contractsSlice = Object.keys(contracts).slice(j, j + CONTRACT_STEP);
+    for (
+      let j = 0;
+      j < Object.keys(contracts).length;
+      j += config.step.contract
+    ) {
+      const contractsSlice = Object.keys(contracts).slice(
+        j,
+        j + config.step.contract
+      );
       const rpcHost = randomItem(config.rpc);
 
       const msg = await worker({
