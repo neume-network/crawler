@@ -1,4 +1,4 @@
-import path, { resolve } from "path";
+import path from "path";
 import { Level } from "level";
 import { AbstractSublevel } from "abstract-level";
 
@@ -10,7 +10,7 @@ export type Datum = {
 };
 
 export type ReturnValue = {
-  id: string;
+  id: Datum;
   value: Record<string, any>;
 };
 
@@ -23,22 +23,35 @@ export class DB {
     });
   }
 
-  datumToKey(datum: Datum) {
-    return `${datum.chainId}/${datum.address}/${datum.tokenId}/${datum.blockNumber}`;
+  datumToKey(datum: Partial<Datum>) {
+    // prettier-ignore
+    return `${datum.chainId || ''}/${datum.address || ''}/${datum.tokenId || ''}/${datum.blockNumber || ''}`;
   }
 
+  keyToDatum(id: string) {
+    const [chainId, address, tokenId, blockNumber] = id.split("/");
+    return { chainId, address, tokenId, blockNumber };
+  }
+
+  async get(datum: Datum): Promise<ReturnValue>;
+  async get(datum: Omit<Datum, "blockNumber">): Promise<ReturnValue>;
+  async get(
+    datum: Omit<Datum, "blockNumber" | "tokenId">
+  ): Promise<ReturnValue[]>;
+  async get(datum: Pick<Datum, "chainId">): Promise<ReturnValue[]>;
   async get(datum: Partial<Datum>): Promise<ReturnValue[] | ReturnValue> {
     const { chainId, address, tokenId, blockNumber } = datum;
+
     if (chainId && address && tokenId && blockNumber) {
       const id = `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`;
-      return { id, value: this.level.get(id) };
+      return { id: this.keyToDatum(id), value: await this.level.get(id) };
     } else if (chainId && address && tokenId) {
       for await (const [id, value] of this.level.iterator({
         lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/~`,
         reverse: true,
         limit: 1,
       })) {
-        return { id, value };
+        return { id: this.keyToDatum(id), value };
       }
     } else if (chainId && address) {
       const results: Record<string, ReturnValue> = {};
@@ -51,17 +64,17 @@ export class DB {
         const idPrefix = id.substring(0, id.lastIndexOf("/"));
 
         if (idPrefix in results) {
-          const prevBlockNumber = results[idPrefix].id.split("/")[3];
-          const currBlockNumber = id.split("/")[3];
+          const prevBlockNumber = results[idPrefix].id.blockNumber;
+          const currBlockNumber = this.keyToDatum(id).blockNumber;
           if (
             prevBlockNumber < currBlockNumber &&
             currBlockNumber <= tillBlockNumber
           ) {
             results[idPrefix].value = value;
-            results[idPrefix].id = id;
+            results[idPrefix].id = this.keyToDatum(id);
           }
         } else {
-          results[idPrefix] = { id, value };
+          results[idPrefix] = { id: this.keyToDatum(id), value };
         }
       }
 
