@@ -10,7 +10,6 @@
   "scripts": {
     "start": "node ./dist/neume.mjs",
     "build": "tsc -b && ln -sf $(pwd)/contracts.json $(pwd)/dist",
-    "postinstall": "cd ./extraction-worker && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
