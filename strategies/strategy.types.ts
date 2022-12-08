@@ -25,12 +25,13 @@ export declare class Strategy {
    *
    * @returns Array of new contracts found
    */
-  filterContracts: (from: number, to: number) => Promise<Contract[]>;
+  filterContracts?: (from: number, to: number) => Promise<Contract[]>;
 
   /**
    * Given an incomplete NFT, query the blockchain to complete it.
    *
-   * @returns A neume schema compatible track
+   * @returns A neume schema compatible track. null is returned if the
+   * NFT needs to be skipped.
    */
-  crawl: (nft: NFT) => Promise<Track>;
+  crawl: (nft: NFT) => Promise<Track | null>;
 }

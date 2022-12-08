@@ -1,8 +1,8 @@
 import { env } from "process";
-import SoundProtocol from "./strategies/sound_protocol";
-import { Strategy } from "./strategies/strategy.types";
+import SoundProtocol from "./strategies/sound_protocol.js";
+import { Strategy } from "./strategies/strategy.types.js";
 
-import { Config } from "./types";
+import { Config } from "./types.js";
 
 const rpcApiKeys = env.RPC_API_KEYS?.split(",");
 const rpcHosts = env.RPC_HTTP_HOSTS?.split(",").map((host, i) => ({
