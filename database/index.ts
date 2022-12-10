@@ -33,13 +33,56 @@ export class DB {
     return { chainId, address, tokenId, blockNumber };
   }
 
-  async get(datum: Datum): Promise<ReturnValue>;
-  async get(datum: Omit<Datum, "blockNumber">): Promise<ReturnValue>;
-  async get(
-    datum: Omit<Datum, "blockNumber" | "tokenId">
-  ): Promise<ReturnValue[]>;
-  async get(datum: Pick<Datum, "chainId">): Promise<ReturnValue[]>;
-  async get(datum: Partial<Datum>): Promise<ReturnValue[] | ReturnValue> {
+  getMany(datum: {
+    chainId: string;
+    address: string;
+    blockNumber?: string;
+  }): AsyncGenerator<ReturnValue>;
+  getMany(datum: {
+    chainId: string;
+    blockNumber?: string;
+  }): AsyncGenerator<ReturnValue>;
+  async *getMany(datum: Partial<Datum>): AsyncGenerator<ReturnValue> {
+    const { chainId, address, tokenId, blockNumber } = datum;
+    const tillBlockNumber = blockNumber || String(Number.MAX_SAFE_INTEGER);
+    const filter = address
+      ? {
+          gte: `${chainId}/${address}/`,
+          lte: `${chainId}/${address}/~`,
+        }
+      : {
+          gte: `${chainId}/`,
+          lte: `${chainId}/~`,
+        };
+    const iter = this.level.iterator(filter);
+    const firstResult = await iter.next();
+
+    if (!firstResult)
+      throw new Error("Couldn't find any items for the given DB query");
+
+    let lastId = this.keyToDatum(firstResult[0]);
+    let result = { id: this.keyToDatum(firstResult[0]), value: firstResult[1] };
+
+    for await (const [_id, value] of iter) {
+      const id = this.keyToDatum(_id);
+      const idPrefix = `${id.chainId}/${id.address}/${id.tokenId}`;
+      const lastIdPrefix = `${lastId.chainId}/${lastId.address}/${lastId.tokenId}`;
+
+      lastId = id;
+      if (lastIdPrefix !== idPrefix) {
+        if (result.id.blockNumber <= tillBlockNumber) yield result;
+        result = { id, value };
+      } else if (tillBlockNumber >= id.blockNumber) {
+        result = { id, value };
+      }
+    }
+
+    if (result.id.blockNumber <= tillBlockNumber) yield result;
+  }
+
+  async getOne(datum: Datum): Promise<ReturnValue>;
+  async getOne(datum: Omit<Datum, "blockNumber">): Promise<ReturnValue>;
+  async getOne(datum: Partial<Datum>): Promise<ReturnValue> {
     const { chainId, address, tokenId, blockNumber } = datum;
 
     if (chainId && address && tokenId && blockNumber) {
@@ -53,40 +96,13 @@ export class DB {
       })) {
         return { id: this.keyToDatum(id), value };
       }
-    } else if (chainId && address) {
-      const results: Record<string, ReturnValue> = {};
-      const tillBlockNumber = blockNumber || String(Number.MAX_SAFE_INTEGER);
-
-      for await (const [id, value] of this.level.iterator({
-        gte: `${datum.chainId}/${datum.address}/`,
-        lte: `${datum.chainId}/${datum.address}/~`,
-      })) {
-        const idPrefix = id.substring(0, id.lastIndexOf("/"));
-
-        if (idPrefix in results) {
-          const prevBlockNumber = results[idPrefix].id.blockNumber;
-          const currBlockNumber = this.keyToDatum(id).blockNumber;
-          if (
-            prevBlockNumber < currBlockNumber &&
-            currBlockNumber <= tillBlockNumber
-          ) {
-            results[idPrefix].value = value;
-            results[idPrefix].id = this.keyToDatum(id);
-          }
-        } else {
-          results[idPrefix] = { id: this.keyToDatum(id), value };
-        }
-      }
-
-      return Object.keys(results).reduce(
-        (finalArray: ReturnValue[], idPrefix: string) => {
-          return [...finalArray, results[idPrefix]];
-        },
-        []
-      );
     }
 
-    throw new Error("Incomplete");
+    throw new Error(
+      `Insufficient parametrs provided to DB.getOne function ${JSON.stringify(
+        datum
+      )}`
+    );
   }
 
   async insert(datum: Datum, data: any) {
