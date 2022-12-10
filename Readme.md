@@ -1,20 +1,27 @@
 # Neume Crawler
 
-> Crawl all music NFTs; supersede [neume-network/core](https://github.com/neume-network/core). (Work in Progress)
+> Crawl all music NFTs; supersedes [neume-network/core](https://github.com/neume-network/core). (Work in Progress)
 
 ## Usage
 
+### Requirements
+- Unix-like operating system
+- Access to an archive node
+- Access to an IPFS gateway
+- Access to an Arweave gateway
+
+### Steps
 - Install dependencies: `npm install`
 - Configure the project:
   - Configure RPC, IPFS endpoints etc. by copying the `.env` and adding the required values
     `cp .env-copy .env`
   - Configure timeout and rate limit the calls by changing the value in [`/config.ts`](/config.ts).
 
-### Production
+#### Production
 - Build the project: `npm run build`
 - Run the project: `npm run start -- <CLI options>`. Example: `npm run start -- crawl --from 16029571 --to 16079363`.
 
-### Developement
+#### Developement
 
 - Run the project: `node --loader ts-node/esm neume.mjs <CLI options>`. Example: `node --loader ts-node/esm neume.mjs crawl --from 16029571 --to 16079363`.
 

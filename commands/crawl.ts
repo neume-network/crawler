@@ -9,6 +9,7 @@ import { getStrategies } from "../config.js";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const CHAIN_ID = "1";
 
 export default async function (from: number, to: number, config: Config) {
   const db = new DB("../tracks");
@@ -96,8 +97,16 @@ export default async function (from: number, to: number, config: Config) {
           );
 
           const track = await strategy?.crawl(nft);
-          // TODO: Save this track to database
-          console.log(track?.title);
+
+          await db.insert(
+            {
+              chainId: CHAIN_ID,
+              address: nft.erc721.address,
+              tokenId: nft.erc721.token.id,
+              blockNumber: nft.erc721.createdAt.toString(),
+            },
+            track
+          );
         })
       );
     }
