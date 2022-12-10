@@ -2,15 +2,15 @@
   "name": "simple-crawler",
   "version": "1.0.0",
   "description": "",
-  "main": "index.mjs",
+  "main": "./dist/neume.mjs",
   "type": "module",
   "bin": {
-    "neume": "neume.mjs"
+    "neume": "./dist/neume.mjs"
   },
   "scripts": {
     "start": "node ./dist/neume.mjs",
     "build": "tsc -b && ln -sf $(pwd)/contracts.json $(pwd)/dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ava"
   },
   "keywords": [],
   "author": "",
