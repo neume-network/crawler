@@ -9,6 +9,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import crawl from "./commands/crawl.js";
+import dump from "./commands/dump.js";
 import filterContracts from "./commands/filter_contracts.js";
 import { config } from "./config.js";
 
@@ -23,9 +24,14 @@ const argv = yargs(hideBin(process.argv))
   .command("filter-contracts", "Find new contracts", (args) =>
     filterContracts(parseInt(args.argv.from), parseInt(args.argv.to), config)
   )
+  .command("dump", "Export database as JSON", (args) => {
+    console.log("here1");
+    dump(parseInt(args.argv.at));
+  })
   .describe("from", "Start the crawl from this block number")
   .describe(
     "to",
     "Last block number to be crawled. (Default: latest block number)"
   )
-  .demandOption("from").argv;
+  .describe("at", "Block number when only one is expected.")
+  .parse();
