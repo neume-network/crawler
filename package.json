@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node ./dist/neume.mjs",
-    "build": "tsc -b && ln -sf \"$(pwd)/contracts.json\" \"$(pwd)/dist\"",
+    "build": "tsc -b && ln -sf ../contracts.json \"$(pwd)/dist\"",
     "test": "ava"
   },
   "keywords": [],
