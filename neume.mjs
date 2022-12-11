@@ -11,7 +11,8 @@ import { hideBin } from "yargs/helpers";
 import crawl from "./commands/crawl.js";
 import dump from "./commands/dump.js";
 import filterContracts from "./commands/filter_contracts.js";
-import { config } from "./config.js";
+import { config, strategies as strategyNames } from "./config.js";
+import { getStrategies } from "./utils.js";
 
 const argv = yargs(hideBin(process.argv))
   .usage("Usage: $0 <command> --from [num]")
@@ -19,15 +20,25 @@ const argv = yargs(hideBin(process.argv))
   .command(
     "crawl",
     "Find new NFTs from the list of already known contracts",
-    (args) => crawl(parseInt(args.argv.from), parseInt(args.argv.to), config)
+    (args) =>
+      crawl(
+        parseInt(args.argv.from),
+        parseInt(args.argv.to),
+        config,
+        getStrategies(strategyNames, args.argv.from, args.argv.to)
+      )
   )
   .command("filter-contracts", "Find new contracts", (args) =>
-    filterContracts(parseInt(args.argv.from), parseInt(args.argv.to), config)
+    filterContracts(
+      parseInt(args.argv.from),
+      parseInt(args.argv.to),
+      config,
+      getStrategies(strategyNames, args.argv.from, args.argv.to)
+    )
   )
-  .command("dump", "Export database as JSON", (args) => {
-    console.log("here1");
-    dump(parseInt(args.argv.at));
-  })
+  .command("dump", "Export database as JSON", (args) =>
+    dump(parseInt(args.argv.at))
+  )
   .describe("from", "Start the crawl from this block number")
   .describe(
     "to",

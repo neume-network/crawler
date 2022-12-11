@@ -1,26 +1,26 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
-import { readFile } from "fs/promises";
 import { toHex } from "eth-fun";
 
 import { DB } from "../database/index.js";
 import { JsonRpcLog, NFT, Config } from "../types.js";
-import { randomItem } from "../utils.js";
-import { getStrategies } from "../config.js";
+import { getContracts, randomItem } from "../utils.js";
+import { Strategy } from "../strategies/strategy.types.js";
+import path from "path";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const CHAIN_ID = "1";
 
-export default async function (from: number, to: number, config: Config) {
-  const db = new DB("../tracks");
-
-  const contractsFilePath = new URL("../contracts.json", import.meta.url);
-  const contracts: Record<string, any> = JSON.parse(
-    await readFile(contractsFilePath, "utf-8")
-  );
-
+export default async function (
+  from: number,
+  to: number,
+  config: Config,
+  _strategies: typeof Strategy[]
+) {
+  const db = new DB(path.resolve("./tracks"));
+  const contracts = await getContracts();
   const worker = ExtractionWorker(config.worker);
-  const strategies = getStrategies(from, to).map((s) => new s(worker, config));
+  const strategies = _strategies.map((s) => new s(worker, config));
 
   for (let i = from; i <= to; i += config.step.block) {
     const fromBlock = i;
@@ -106,6 +106,14 @@ export default async function (from: number, to: number, config: Config) {
               blockNumber: nft.erc721.createdAt.toString(),
             },
             track
+          );
+
+          console.log(
+            "Found track:",
+            track?.title,
+            track?.platform.name,
+            "at",
+            track?.erc721.createdAt
           );
         })
       );
