@@ -1,7 +1,6 @@
 import fs from "fs";
 import { writeFile, mkdir } from "fs/promises";
 import { canonicalize } from "json-canonicalize";
-import crypto from "crypto";
 import path from "path";
 import { DB } from "../database/index.js";
 const DIR = path.resolve("./dump");
@@ -16,19 +15,11 @@ export default async function dump(at) {
             blockNumber: at.toString(),
         })) {
             const track = canonicalize(value);
-            const hash = crypto
-                .createHash("sha256")
-                .update(track)
-                .digest("hex")
-                .match(/.{1,2}/g)
-                ?.join("/");
-            if (!hash)
-                throw new Error("Couldn't hash JSON value");
-            await mkdir(path.resolve(DIR, hash), { recursive: true });
-            const normalId = db.datumToKey(id).replace(/\//g, ".");
-            const outputPath = path.resolve(DIR, hash, `${normalId}.json`);
-            await writeFile(outputPath, track);
-            console.log("Wrote track at", outputPath);
+            const outputPath = path.resolve(DIR, `${id.chainId}/${id.address}/${id.tokenId}`);
+            await mkdir(outputPath, { recursive: true });
+            const outputFile = path.resolve(outputPath, `entry.json`);
+            await writeFile(outputFile, track);
+            console.log("Wrote track at", outputFile);
         }
     }
     catch (err) {
