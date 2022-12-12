@@ -16,23 +16,32 @@ export default async function dump(at: number) {
     fs.mkdirSync(DIR, { recursive: true });
   }
 
-  for await (const { id, value } of db.getMany({
-    chainId: "1",
-    blockNumber: at.toString(),
-  })) {
-    const track = canonicalize(value);
-    const hash = crypto
-      .createHash("sha256")
-      .update(track)
-      .digest("hex")
-      .match(/.{1,2}/g)
-      ?.join("/");
-    if (!hash) throw new Error("Couldn't hash JSON value");
-    await mkdir(path.resolve(DIR, hash), { recursive: true });
-    const normalId = db.datumToKey(id).replace(/\//g, ".");
-    const outputPath = path.resolve(DIR, hash, `${normalId}.json`);
-    await writeFile(outputPath, track);
-    console.log("Wrote track at", outputPath);
+  try {
+    for await (const { id, value } of db.getMany({
+      chainId: "1",
+      blockNumber: at.toString(),
+    })) {
+      const track = canonicalize(value);
+      const hash = crypto
+        .createHash("sha256")
+        .update(track)
+        .digest("hex")
+        .match(/.{1,2}/g)
+        ?.join("/");
+      if (!hash) throw new Error("Couldn't hash JSON value");
+      await mkdir(path.resolve(DIR, hash), { recursive: true });
+      const normalId = db.datumToKey(id).replace(/\//g, ".");
+      const outputPath = path.resolve(DIR, hash, `${normalId}.json`);
+      await writeFile(outputPath, track);
+      console.log("Wrote track at", outputPath);
+    }
+  } catch (err: any) {
+    // TOOD: Find a way to not depend on error message
+    if (err.message === "Couldn't find any items for the given DB query") {
+      console.log("Nothing to dump. Exiting from dump command.");
+      process.exit(0);
+    }
+    throw err;
   }
 
   console.log("Exiting from dump command");
