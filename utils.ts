@@ -1,10 +1,47 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import { Strategy } from "./strategies/strategy.types.js";
+import { RpcConfig } from "./types.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+//curl -s https://cloudflare-eth.com/v1/mainnet -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+
+export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    const req = https.request(
+      rpcHost.url,
+      {
+        method: "POST",
+        headers: {
+          ...(rpcHost.key && { Authorization: `Bearer ${rpcHost.key}` }),
+        },
+      },
+      (res) => {
+        res.setEncoding("utf8");
+        res.on("error", reject);
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          const ret = JSON.parse(data);
+          if (ret.error) reject(ret.error);
+          resolve(parseInt(ret.result, 16));
+        });
+      }
+    );
+
+    req.on("error", reject);
+    req.write(
+      '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+    );
+    req.end();
+  });
 }
 
 /**

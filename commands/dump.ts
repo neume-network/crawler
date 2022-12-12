@@ -36,6 +36,7 @@ export default async function dump(at: number) {
   }
 
   console.log("Exiting from dump command");
+  process.exit(0);
 }
 
 async function flush(filename: string, tracks: Track[]) {

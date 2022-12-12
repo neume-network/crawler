@@ -120,6 +120,7 @@ export default async function (
     }
   }
 
-  console.log("to be closed");
   await db.level.close();
+  console.log("Exiting from crawl command");
+  process.exit(0);
 }

@@ -43,4 +43,5 @@ export default async function (
     JSON.stringify(contracts, null, 2)
   );
   console.log("Exiting from filter-contracts command");
+  process.exit(0);
 }

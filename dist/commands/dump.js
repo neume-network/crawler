@@ -30,6 +30,7 @@ export default async function dump(at) {
         console.log("Wrote track at", outputPath);
     }
     console.log("Exiting from dump command");
+    process.exit(0);
 }
 async function flush(filename, tracks) {
     await writeFile(filename, JSON.stringify(tracks, null, 2));

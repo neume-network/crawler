@@ -77,6 +77,7 @@ export default async function (from, to, config, _strategies) {
             }));
         }
     }
-    console.log("to be closed");
     await db.level.close();
+    console.log("Exiting from crawl command");
+    process.exit(0);
 }
