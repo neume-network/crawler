@@ -38,7 +38,7 @@ export function getLatestBlockNumber(rpcHost) {
  * This function reads and merge them both.
  */
 export async function getContracts() {
-    const defaultContractsPath = new URL("./contracts.json", import.meta.url);
+    const defaultContractsPath = new URL("./contracts.hardcode.json", import.meta.url);
     const userContractsPath = path.resolve("./contracts.json");
     return {
         ...JSON.parse(await readFile(defaultContractsPath, "utf-8")),

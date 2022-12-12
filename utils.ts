@@ -50,7 +50,10 @@ export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
  * This function reads and merge them both.
  */
 export async function getContracts(): Promise<Record<string, any>> {
-  const defaultContractsPath = new URL("./contracts.json", import.meta.url);
+  const defaultContractsPath = new URL(
+    "./contracts.hardcode.json",
+    import.meta.url
+  );
   const userContractsPath = path.resolve("./contracts.json");
 
   return {

@@ -4,6 +4,7 @@ pending_tracks
 dump
 *.env
 **/config.js
+contracts.json
 
 # TODO: Add dist folder here. Since we are using the package through 
 # GitHub we have to commit dist.
