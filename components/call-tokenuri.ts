@@ -54,7 +54,7 @@ export async function callTokenUri(
   };
   const ret = await worker(msg);
 
-  if (msg.error)
+  if (ret.error)
     throw new Error(
       `Error while calling tokenURI on contract: ${JSON.stringify(
         msg,
