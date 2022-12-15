@@ -10,6 +10,7 @@ export default class SoundProtocol implements Strategy {
   public static version = "1.0.0";
   public static createdAtBlock = 15570834;
   public static deprecatedAtBlock = null;
+  public static invalidIDs = ["0xdf4f25cd13567a74572063dcf15f101c22be1af0/321"];
   private worker: ExtractionWorkerHandler;
   private config: Config;
 
@@ -85,6 +86,13 @@ export default class SoundProtocol implements Strategy {
   };
 
   crawl = async (nft: NFT) => {
+    if (
+      SoundProtocol.invalidIDs.includes(
+        `${nft.erc721.address}/${nft.erc721.token.id}`
+      )
+    )
+      return null;
+
     nft = await callTokenUri(
       this.worker,
       this.config,

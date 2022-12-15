@@ -15,6 +15,8 @@ export async function getIpfsTokenUri(nft) {
     if (!nft.erc721.token.uri)
         throw new Error(`tokenURI required for IPFS: ${JSON.stringify(nft, null, 2)}`);
     const msg = await route(makeRequest(nft.erc721.token.uri));
+    if (msg.error)
+        throw new Error(`Error while fetching IPFS URI: ${JSON.stringify(msg, null, 2)} \n${JSON.stringify(nft, null, 2)}`);
     nft.erc721.token.uriContent = msg.results;
     return nft;
 }

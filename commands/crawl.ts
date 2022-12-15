@@ -98,15 +98,17 @@ export default async function (
 
           const track = await strategy?.crawl(nft);
 
-          await db.insert(
-            {
-              chainId: CHAIN_ID,
-              address: nft.erc721.address,
-              tokenId: nft.erc721.token.id,
-              blockNumber: nft.erc721.createdAt.toString(),
-            },
-            track
-          );
+          if (track !== null) {
+            await db.insert(
+              {
+                chainId: CHAIN_ID,
+                address: nft.erc721.address,
+                tokenId: nft.erc721.token.id,
+                blockNumber: nft.erc721.createdAt.toString(),
+              },
+              track
+            );
+          }
 
           console.log(
             "Found track:",

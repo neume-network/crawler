@@ -41,7 +41,7 @@ export async function callTokenUri(worker, config, blockNumber, nft) {
         ],
     };
     const ret = await worker(msg);
-    if (msg.error)
+    if (ret.error)
         throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(msg, null, 2)} \n${JSON.stringify(nft, null, 2)}`);
     nft.erc721.token.uri = decodeParameters(["string"], ret.results)[0];
     return nft;

@@ -67,12 +67,14 @@ export default async function (from, to, config, _strategies) {
                 };
                 const strategy = strategies.find((s) => s.constructor.name === nft.platform.name);
                 const track = await strategy?.crawl(nft);
-                await db.insert({
-                    chainId: CHAIN_ID,
-                    address: nft.erc721.address,
-                    tokenId: nft.erc721.token.id,
-                    blockNumber: nft.erc721.createdAt.toString(),
-                }, track);
+                if (track !== null) {
+                    await db.insert({
+                        chainId: CHAIN_ID,
+                        address: nft.erc721.address,
+                        tokenId: nft.erc721.token.id,
+                        blockNumber: nft.erc721.createdAt.toString(),
+                    }, track);
+                }
                 console.log("Found track:", track?.title, track?.platform.name, "at", track?.erc721.createdAt);
             }));
         }
