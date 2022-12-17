@@ -1,6 +1,6 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { Track } from "@neume-network/schema";
-import { Config, Contract, NFT } from "../types";
+import { Config, Contract, NFT } from "../types.js";
 
 export declare class Strategy {
   public static version: string;

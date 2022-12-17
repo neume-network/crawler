@@ -75,6 +75,10 @@ export default async function (
             console.log(`log.blockNumber not found for ${msg}`);
             return;
           }
+          if (!log.topics[3]) {
+            console.log(`log.topics[3] should not be undefined`);
+            return;
+          }
 
           const nft: NFT = {
             platform: {
