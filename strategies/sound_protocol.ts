@@ -10,7 +10,10 @@ export default class SoundProtocol implements Strategy {
   public static version = "1.0.0";
   public static createdAtBlock = 15570834;
   public static deprecatedAtBlock = null;
-  public static invalidIDs = ["0xdf4f25cd13567a74572063dcf15f101c22be1af0/321"];
+  public static invalidIDs = [
+    "0xdf4f25cd13567a74572063dcf15f101c22be1af0/321", // invalid tokenURI
+    "0x9f396644ec4b2a2bc3c6cf665d29165dde0e83f1", // tokenURI is not properly formatted and is not Arweave
+  ];
   private worker: ExtractionWorkerHandler;
   private config: Config;
 
@@ -87,8 +90,8 @@ export default class SoundProtocol implements Strategy {
 
   crawl = async (nft: NFT) => {
     if (
-      SoundProtocol.invalidIDs.includes(
-        `${nft.erc721.address}/${nft.erc721.token.id}`
+      SoundProtocol.invalidIDs.filter((id) =>
+        `${nft.erc721.address}/${nft.erc721.token.id}`.includes(id)
       )
     )
       return null;

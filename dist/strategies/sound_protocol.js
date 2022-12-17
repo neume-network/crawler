@@ -55,7 +55,7 @@ export default class SoundProtocol {
             });
         };
         this.crawl = async (nft) => {
-            if (SoundProtocol.invalidIDs.includes(`${nft.erc721.address}/${nft.erc721.token.id}`))
+            if (SoundProtocol.invalidIDs.filter((id) => `${nft.erc721.address}/${nft.erc721.token.id}`.includes(id)))
                 return null;
             nft = await callTokenUri(this.worker, this.config, nft.erc721.createdAt, nft);
             nft = await getArweaveTokenUri(this.worker, this.config, nft);
@@ -112,4 +112,7 @@ export default class SoundProtocol {
 SoundProtocol.version = "1.0.0";
 SoundProtocol.createdAtBlock = 15570834;
 SoundProtocol.deprecatedAtBlock = null;
-SoundProtocol.invalidIDs = ["0xdf4f25cd13567a74572063dcf15f101c22be1af0/321"];
+SoundProtocol.invalidIDs = [
+    "0xdf4f25cd13567a74572063dcf15f101c22be1af0/321",
+    "0x9f396644ec4b2a2bc3c6cf665d29165dde0e83f1", // tokenURI is not properly formatted and is not Arweave
+];
