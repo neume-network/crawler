@@ -9,6 +9,7 @@ export default async function dump(at) {
     if (!fs.existsSync(DIR)) {
         fs.mkdirSync(DIR, { recursive: true });
     }
+    let count = 0;
     try {
         for await (const { id, value } of db.getMany({
             chainId: "1",
@@ -19,7 +20,7 @@ export default async function dump(at) {
             await mkdir(outputPath, { recursive: true });
             const outputFile = path.resolve(outputPath, `entry.json`);
             await writeFile(outputFile, track);
-            console.log("Wrote track at", outputFile);
+            count++;
         }
     }
     catch (err) {
@@ -30,7 +31,7 @@ export default async function dump(at) {
         }
         throw err;
     }
-    console.log("Exiting from dump command");
+    console.log(`Exiting from dump command; Wrote ${count} tracks.`);
     process.exit(0);
 }
 async function flush(filename, tracks) {
