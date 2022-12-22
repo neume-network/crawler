@@ -15,7 +15,7 @@
 - Configure the project:
   - Configure RPC, IPFS endpoints etc. by copying the `.env` and adding the required values
     `cp .env-copy .env`
-  - Configure timeout and rate limit the calls by changing the value in [`/config.ts`](/config.ts).
+  - Configure timeout and rate limit the calls by copying `config.sample.js`. `cp config.sample.js config.js`.
 
 #### Production
 - Build the project: `npm run build`

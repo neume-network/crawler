@@ -2,7 +2,7 @@
   "name": "@neume-network/crawler",
   "version": "1.0.0",
   "description": "",
-  "main": "./dist/neume.mjs",
+  "exports": "./dist/neume.mjs",
   "type": "module",
   "bin": {
     "neume": "./dist/neume.mjs"
