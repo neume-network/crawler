@@ -25,8 +25,10 @@ test.serial("should be able to get values by id", async (t) => {
   const value = { test: "data" };
   await db.insert(datum, value);
   const ret = await db.getOne(datum);
+  const ids = await db.getIdsChanged("110");
   t.deepEqual(ret.id, datum);
   t.deepEqual(ret.value, value);
+  t.deepEqual(ids, [db.datumToKey(datum)]);
 });
 
 test.serial(
@@ -203,8 +205,70 @@ test.serial("should rewrite data if id is same", async (t) => {
   t.deepEqual(ret.value, values[1].value);
 });
 
-test.afterEach("clear database", async (t) => {
-  await db.level.clear();
+test.serial("should get empty array if no ids have been changed", async (t) => {
+  const ids = await db.getIdsChanged("110", "115");
+  t.deepEqual(ids, []);
+});
+
+test.serial("should get all changed ids given a block range", async (t) => {
+  const values = [
+    {
+      id: { chainId, address: "0xa0", tokenId: "0", blockNumber: "105" },
+      value: { test: "data" },
+    },
+    {
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      value: { test: "data" },
+    },
+    {
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      value: { test: "updated-data" },
+    },
+    {
+      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: "115" },
+      value: { test: "data" },
+    },
+    {
+      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: "120" },
+      value: { test: "updated-data" },
+    },
+  ];
+  await Promise.all(values.map((v) => db.insert(v.id, v.value)));
+
+  let ids = await db.getIdsChanged("110", "115");
+  let returnValues = await db.getIdsChanged_fill("110", "115");
+  t.deepEqual(ids, [db.datumToKey(values[2].id), db.datumToKey(values[3].id)]);
+  t.deepEqual(returnValues, [values[2], values[3]]);
+
+  ids = await db.getIdsChanged("105", "115");
+  returnValues = await db.getIdsChanged_fill("105", "115");
+  t.deepEqual(ids, [
+    db.datumToKey(values[0].id),
+    db.datumToKey(values[2].id),
+    db.datumToKey(values[3].id),
+  ]);
+  t.deepEqual(returnValues, [values[0], values[2], values[3]]);
+
+  ids = await db.getIdsChanged("115");
+  returnValues = await db.getIdsChanged_fill("115");
+  t.deepEqual(ids, [db.datumToKey(values[3].id)]);
+  t.deepEqual(returnValues, [values[3]]);
+
+  await db.del(values[2].id);
+  ids = await db.getIdsChanged("105", "115");
+  returnValues = await db.getIdsChanged_fill("105", "115");
+  t.deepEqual(ids, [db.datumToKey(values[0].id), db.datumToKey(values[3].id)]);
+  t.deepEqual(returnValues, [values[0], values[3]]);
+
+  await db.del(values[3].id);
+  ids = await db.getIdsChanged("105", "120");
+  returnValues = await db.getIdsChanged_fill("105", "120");
+  t.deepEqual(ids, [db.datumToKey(values[0].id), db.datumToKey(values[4].id)]);
+  t.deepEqual(returnValues, [values[0], values[4]]);
+});
+
+test.beforeEach("clear database", async (t) => {
+  await Promise.all([db.level.clear(), db.changeIndex.clear()]);
 });
 
 test.after("close database", async (t) => {

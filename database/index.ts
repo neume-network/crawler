@@ -1,6 +1,5 @@
 import path from "path";
 import { Level } from "level";
-import { AbstractSublevel } from "abstract-level";
 
 export type Datum = {
   chainId: string;
@@ -15,10 +14,17 @@ export type ReturnValue = {
 };
 
 export class DB {
-  level: Level<string, Record<string, any>>;
+  level: Level<string, Record<string, any> | string[]>;
+  changeIndex: Level<string, string>;
 
-  constructor(indexPath: string) {
-    this.level = new Level<string, any>(path.resolve(indexPath), {
+  constructor(dbPath: string) {
+    this.level = new Level<string, Record<string, any> | string[]>(
+      path.resolve(dbPath, "./tracks"),
+      {
+        valueEncoding: "json",
+      }
+    );
+    this.changeIndex = new Level(path.resolve(dbPath, "./changes"), {
       valueEncoding: "json",
     });
   }
@@ -105,12 +111,51 @@ export class DB {
     );
   }
 
+  async getIdsChanged(from: string, to?: string): Promise<string[]> {
+    to = to ?? from;
+    const ids = new Map();
+
+    for await (const [_id, value] of this.changeIndex.iterator({
+      gte: `${from}/`,
+      lte: `${to}/~`,
+    })) {
+      const [blockNumber, chainId, address, tokenId] = _id.split("/");
+      const id = `${chainId}/${address}/${tokenId}/${blockNumber}`;
+      const nid = `${chainId}/${address}/${tokenId}`;
+      ids.set(nid, id);
+    }
+
+    return Array.from(ids, ([nid, id]) => id);
+  }
+
+  async getIdsChanged_fill(from: string, to?: string): Promise<ReturnValue[]> {
+    const idsChanged = await this.getIdsChanged(from, to);
+
+    return Promise.all(
+      idsChanged.map(async (id) => {
+        const value = await this.level.get(id);
+
+        return {
+          id: this.keyToDatum(id),
+          value,
+        };
+      })
+    );
+  }
+
   async insert(datum: Datum, data: any) {
-    return this.level.put(this.datumToKey(datum), data);
+    await this.level.put(this.datumToKey(datum), data);
+    await this.changeIndex.put(
+      `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`,
+      ""
+    );
   }
 
   async del(datum: Datum) {
-    return this.level.del(this.datumToKey(datum));
+    await this.level.del(this.datumToKey(datum));
+    await this.changeIndex.del(
+      `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`
+    );
   }
 
   async flush() {}
