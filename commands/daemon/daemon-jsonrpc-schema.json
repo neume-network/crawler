@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "jsonrpc": {"type": "string", "const": "2.0"},
+    "id": {"type": "string"},
+    "method": {"type": "string"},
+    "params": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/getIdsChanged"
+        }
+      ]
+    }
+  },
+  "required": ["jsonrpc", "id", "method"],
+  "$defs": {
+    "getIdsChanged": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,11 +1,11 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
 import { toHex } from "eth-fun";
+import { db } from "../database/index.js";
 
 import { DB } from "../database/index.js";
 import { JsonRpcLog, NFT, Config } from "../types.js";
 import { getContracts, randomItem } from "../utils.js";
 import { Strategy } from "../strategies/strategy.types.js";
-import path from "path";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -17,7 +17,6 @@ export default async function (
   config: Config,
   _strategies: typeof Strategy[]
 ) {
-  const db = new DB(path.resolve("./tracks"));
   const contracts = await getContracts();
   const worker = ExtractionWorker(config.worker);
   const strategies = _strategies.map((s) => new s(worker, config));
@@ -128,5 +127,4 @@ export default async function (
 
   await db.level.close();
   console.log("Exiting from crawl command");
-  process.exit(0);
 }

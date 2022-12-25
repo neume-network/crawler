@@ -13,6 +13,7 @@ import crawl from "./commands/crawl.js";
 import dump from "./commands/dump.js";
 import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./utils.js";
+import daemon from "./commands/daemon/index.js";
 
 const { config, strategies: strategyNames } = await import(
   path.resolve("./config.js")
@@ -37,7 +38,8 @@ const argv = yargs(hideBin(process.argv))
     async (argv) => {
       const from = argv.from;
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      return crawl(from, to, config, getStrategies(strategyNames, from, to));
+      await crawl(from, to, config, getStrategies(strategyNames, from, to));
+      process.exit(0);
     }
   )
   .command(
@@ -57,12 +59,13 @@ const argv = yargs(hideBin(process.argv))
     async (argv) => {
       const from = argv.from;
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      return filterContracts(
+      await filterContracts(
         from,
         to,
         config,
         getStrategies(strategyNames, from, to)
       );
+      process.exit(0);
     }
   )
   .command(
@@ -80,17 +83,19 @@ const argv = yargs(hideBin(process.argv))
       return dump(at);
     }
   )
+  .command(
+    "daemon",
+    "Start neume-network daemon",
+    {
+      from: {
+        type: "number",
+        describe: "From block number",
+        demandOption: true,
+      },
+    },
+    async (argv) => {
+      await daemon(argv.from, config, strategyNames);
+    }
+  )
   .help(true)
   .parse();
-
-/**
- * 
-  .command("dump", "Export database as JSON", async (args) =>
-    dump(parseInt(args.argv.at ?? (await getLatestBlockNumber(config.rpc[0]))))
-  )
-  .describe("from", "Start the crawl from this block number")
-  .describe(
-    "to",
-    "Last block number to be crawled. (Default: latest block number)"
-  )
- */

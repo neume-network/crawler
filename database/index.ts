@@ -160,3 +160,5 @@ export class DB {
 
   async flush() {}
 }
+
+export const db = new DB(path.resolve("./data"));
