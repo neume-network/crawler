@@ -29,12 +29,13 @@ export default async function (url, latestBlockNumber, config) {
     const lastId = await db.changeIndex
         .iterator({ reverse: true, limit: 1 })
         .next();
-    const lastSyncedBlock = lastId ? parseInt(lastId[0].split("/")[0]) : 1500000;
+    const lastSyncedBlock = lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
+    console.log("Will sync from", lastSyncedBlock, "to", latestBlockNumber);
     for (let syncedTill = lastSyncedBlock; syncedTill <= latestBlockNumber; syncedTill += 5000) {
         console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
         const returnValues = (await client.request("getIdsChanged_fill", [
-            syncedTill,
-            syncedTill + 5000,
+            syncedTill.toString(),
+            (syncedTill + 5000).toString(),
         ]));
         await Promise.all(returnValues.map(async (r) => {
             await db.insert(r.id, r.value);

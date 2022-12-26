@@ -41,8 +41,9 @@ export default async function (
   const lastId = await db.changeIndex
     .iterator({ reverse: true, limit: 1 })
     .next();
-  const lastSyncedBlock = lastId ? parseInt(lastId[0].split("/")[0]) : 1500000;
+  const lastSyncedBlock = lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
 
+  console.log("Will sync from", lastSyncedBlock, "to", latestBlockNumber);
   for (
     let syncedTill = lastSyncedBlock;
     syncedTill <= latestBlockNumber;
@@ -50,8 +51,8 @@ export default async function (
   ) {
     console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
     const returnValues = (await client.request("getIdsChanged_fill", [
-      syncedTill,
-      syncedTill + 5000,
+      syncedTill.toString(),
+      (syncedTill + 5000).toString(),
     ])) as ReturnValue[];
 
     await Promise.all(
