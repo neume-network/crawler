@@ -14,6 +14,8 @@ import dump from "./commands/dump.js";
 import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./utils.js";
 import daemon from "./commands/daemon/index.js";
+import sync from "./commands/sync.js";
+import { db } from "./database/index.js";
 
 const { config, strategies: strategyNames } = await import(
   path.resolve("./config.js")
@@ -92,9 +94,37 @@ const argv = yargs(hideBin(process.argv))
         describe: "From block number",
         demandOption: true,
       },
+      crawl: {
+        type: "boolean",
+        describe: "Flag for crawler",
+        default: true,
+      },
     },
     async (argv) => {
-      await daemon(argv.from, config, strategyNames);
+      await daemon(argv.from, argv.crawl, config, strategyNames);
+    }
+  )
+  .command(
+    "sync",
+    "Sync neume-network with another node",
+    {
+      url: {
+        type: "string",
+        describe: "An endpoint that is running neume-network daemon",
+        demandOption: true,
+      },
+    },
+    async (argv) => {
+      const latestBlockNumber = await getLatestBlockNumber(config.rpc[0]);
+      await sync(argv.url, latestBlockNumber, config);
+      process.exit(0);
+    }
+  )
+  .command(
+    "create-change-index",
+    "Create change index from primary database",
+    async (argv) => {
+      return db.createChangeIndex();
     }
   )
   .help(true)

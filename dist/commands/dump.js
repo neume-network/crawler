@@ -2,10 +2,9 @@ import fs from "fs";
 import { writeFile, mkdir } from "fs/promises";
 import { canonicalize } from "json-canonicalize";
 import path from "path";
-import { DB } from "../database/index.js";
+import { db } from "../database/index.js";
 const DIR = path.resolve("./dump");
 export default async function dump(at) {
-    const db = new DB(path.resolve("./tracks"));
     if (!fs.existsSync(DIR)) {
         fs.mkdirSync(DIR, { recursive: true });
     }

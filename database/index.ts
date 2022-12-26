@@ -158,6 +158,20 @@ export class DB {
     );
   }
 
+  async createChangeIndex() {
+    let count = 0;
+    for await (const [_id, value] of this.level.iterator()) {
+      const datum = this.keyToDatum(_id);
+      await this.changeIndex.put(
+        `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`,
+        ""
+      );
+      count++;
+    }
+
+    console.log("Change index updated", count);
+  }
+
   async flush() {}
 }
 

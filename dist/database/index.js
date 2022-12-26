@@ -1,8 +1,11 @@
 import path from "path";
 import { Level } from "level";
 export class DB {
-    constructor(indexPath) {
-        this.level = new Level(path.resolve(indexPath), {
+    constructor(dbPath) {
+        this.level = new Level(path.resolve(dbPath, "./tracks"), {
+            valueEncoding: "json",
+        });
+        this.changeIndex = new Level(path.resolve(dbPath, "./changes"), {
             valueEncoding: "json",
         });
     }
@@ -66,11 +69,47 @@ export class DB {
         }
         throw new Error(`Insufficient parametrs provided to DB.getOne function ${JSON.stringify(datum)}`);
     }
+    async getIdsChanged(from, to) {
+        to = to ?? from;
+        const ids = new Map();
+        for await (const [_id, value] of this.changeIndex.iterator({
+            gte: `${from}/`,
+            lte: `${to}/~`,
+        })) {
+            const [blockNumber, chainId, address, tokenId] = _id.split("/");
+            const id = `${chainId}/${address}/${tokenId}/${blockNumber}`;
+            const nid = `${chainId}/${address}/${tokenId}`;
+            ids.set(nid, id);
+        }
+        return Array.from(ids, ([nid, id]) => id);
+    }
+    async getIdsChanged_fill(from, to) {
+        const idsChanged = await this.getIdsChanged(from, to);
+        return Promise.all(idsChanged.map(async (id) => {
+            const value = await this.level.get(id);
+            return {
+                id: this.keyToDatum(id),
+                value,
+            };
+        }));
+    }
     async insert(datum, data) {
-        return this.level.put(this.datumToKey(datum), data);
+        await this.level.put(this.datumToKey(datum), data);
+        await this.changeIndex.put(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`, "");
     }
     async del(datum) {
-        return this.level.del(this.datumToKey(datum));
+        await this.level.del(this.datumToKey(datum));
+        await this.changeIndex.del(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`);
+    }
+    async createChangeIndex() {
+        let count = 0;
+        for await (const [_id, value] of this.level.iterator()) {
+            const datum = this.keyToDatum(_id);
+            await this.changeIndex.put(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`, "");
+            count++;
+        }
+        console.log("Change index updated", count);
     }
     async flush() { }
 }
+export const db = new DB(path.resolve("./data"));

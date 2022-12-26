@@ -2,6 +2,7 @@ node_modules
 tracks
 pending_tracks
 dump
+data
 *.env
 **/config.js
 contracts.json

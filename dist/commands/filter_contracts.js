@@ -26,5 +26,4 @@ export default async function (from, to, config, _strategies) {
     }
     await writeFile(path.resolve("./contracts.json"), JSON.stringify(contracts, null, 2));
     console.log("Exiting from filter-contracts command");
-    process.exit(0);
 }

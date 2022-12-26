@@ -1,25 +1,19 @@
 import { fastify as Fastify } from "fastify";
 import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
-import { readFile } from "fs/promises";
 
 import { Config } from "../../types.js";
 import { getLatestBlockNumber, getStrategies } from "../../utils.js";
 import crawl from "../crawl.js";
 import filter_contracts from "../filter_contracts.js";
 import { db } from "../../database/index.js";
-import { DaemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
-
-const daemonJsonrpcSchema = JSON.parse(
-  await readFile(
-    new URL("./daemon-jsonrpc-schema.json", import.meta.url),
-    "utf-8"
-  )
-);
+import { DaemonJsonrpcType } from "./daemon-jsonrpc-type.js";
+import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
 
 const fastify = Fastify();
 
 export default async function daemon(
   from: number,
+  crawlFlag: boolean,
   config: Config,
   strategyNames: string[]
 ) {
@@ -38,14 +32,14 @@ export default async function daemon(
     setTimeout(task, 10);
   };
 
-  // task();
+  if (crawlFlag) task();
   await startServer();
 }
 
 async function startServer() {
   const server = new JSONRPCServer();
-  server.addMethod("getIdsChanged", async ([from, to]) => {
-    if (to - from >= 5000)
+  server.addMethod("getIdsChanged_fill", async ([from, to]) => {
+    if (to - from > 5000)
       throw new JSONRPCErrorException(
         "Block range should be less than 5000",
         -32600
@@ -54,7 +48,7 @@ async function startServer() {
     return res;
   });
 
-  fastify.route<{ Body: DaemonJsonrpcSchema }>({
+  fastify.route<{ Body: DaemonJsonrpcType }>({
     method: "POST",
     url: "/",
     schema: {

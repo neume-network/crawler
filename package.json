@@ -2,14 +2,15 @@
   "name": "@neume-network/crawler",
   "version": "1.0.0",
   "description": "",
-  "exports": "./dist/neume.mjs",
+  "exports": "./dist/neume.js",
   "type": "module",
   "bin": {
-    "neume": "./dist/neume.mjs"
+    "neume": "./dist/neume.js"
   },
   "scripts": {
-    "start": "node ./dist/neume.mjs",
-    "build": "tsc -b && cp ./contracts.hardcode.json ./dist/contracts.hardcode.json",
+    "start": "node ./dist/neume.js",
+    "build": "npm run compile-schemas && tsc -b && cp ./contracts.hardcode.json ./dist/contracts.hardcode.json",
+    "compile-schemas": "node commands/daemon/daemon-jsonrpc-schema.js > commands/daemon/daemon-jsonrpc-type.d.ts",
     "test": "ava"
   },
   "keywords": [],
@@ -21,8 +22,11 @@
     "ava": "^5.1.0",
     "dotenv": "^16.0.3",
     "eth-fun": "^0.9.2",
+    "fastify": "^4.10.2",
     "ipfs-uri-utils": "^1.0.0",
     "json-canonicalize": "^1.0.4",
+    "json-rpc-2.0": "^1.4.2",
+    "json-schema-to-typescript": "^11.0.2",
     "level": "^8.0.0",
     "p-map": "^5.5.0",
     "yargs": "^17.6.2"

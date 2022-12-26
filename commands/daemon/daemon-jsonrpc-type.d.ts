@@ -7,10 +7,11 @@
 
 export type GetIdsChanged = string[];
 
-export interface DaemonJsonrpcSchema {
+export interface DaemonJsonrpcType {
   jsonrpc: "2.0";
   id: string;
   method: string;
   params?: GetIdsChanged;
   [k: string]: unknown;
 }
+
