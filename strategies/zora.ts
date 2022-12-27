@@ -30,7 +30,7 @@ export default class Zora implements Strategy {
     nft = await callTokenUri(
       this.worker,
       this.config,
-      nft.erc721.createdAt,
+      nft.erc721.blockNumber,
       nft
     );
 

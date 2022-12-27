@@ -1,14 +1,15 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
 import { toHex } from "eth-fun";
-import { db } from "../database/index.js";
 
-import { DB } from "../database/index.js";
+import { db } from "../database/index.js";
 import { JsonRpcLog, NFT, Config } from "../types.js";
 import { getContracts, randomItem } from "../utils.js";
 import { Strategy } from "../strategies/strategy.types.js";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const FROM_EVENT_SELECTOR =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 const CHAIN_ID = "1";
 
 export default async function (
@@ -84,7 +85,7 @@ export default async function (
               ...contracts[log.address],
             },
             erc721: {
-              createdAt: parseInt(log.blockNumber, 16),
+              blockNumber: parseInt(log.blockNumber, 16),
               address: log.address,
               token: {
                 minting: {
@@ -99,27 +100,31 @@ export default async function (
             (s) => s.constructor.name === nft.platform.name
           );
 
-          const track = await strategy?.crawl(nft);
+          if (log.topics[1] === FROM_EVENT_SELECTOR) {
+            const track = await strategy?.crawl(nft);
 
-          if (track !== null) {
-            await db.insert(
-              {
-                chainId: CHAIN_ID,
-                address: nft.erc721.address,
-                tokenId: nft.erc721.token.id,
-                blockNumber: nft.erc721.createdAt.toString(),
-              },
-              track
+            if (track !== null) {
+              await db.insert(
+                {
+                  chainId: CHAIN_ID,
+                  address: nft.erc721.address,
+                  tokenId: nft.erc721.token.id,
+                  blockNumber: nft.erc721.blockNumber.toString(),
+                },
+                track
+              );
+            }
+
+            console.log(
+              "Found track:",
+              track?.title,
+              track?.platform.name,
+              "at",
+              track?.erc721.createdAt
             );
+          } else {
+            strategy?.updateOwner(nft);
           }
-
-          console.log(
-            "Found track:",
-            track?.title,
-            track?.platform.name,
-            "at",
-            track?.erc721.createdAt
-          );
         })
       );
     }

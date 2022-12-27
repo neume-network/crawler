@@ -103,7 +103,7 @@ export default class SoundProtocol implements Strategy {
     nft = await callTokenUri(
       this.worker,
       this.config,
-      nft.erc721.createdAt,
+      nft.erc721.blockNumber,
       nft
     );
     nft = await getArweaveTokenUri(this.worker, this.config, nft);
@@ -133,7 +133,7 @@ export default class SoundProtocol implements Strategy {
       },
       erc721: {
         version: SoundProtocol.version,
-        createdAt: nft.erc721.createdAt,
+        createdAt: nft.erc721.blockNumber,
         // TODO: Stop hard coding this value
         owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
         address: nft.erc721.address,
@@ -160,4 +160,6 @@ export default class SoundProtocol implements Strategy {
       ],
     };
   };
+
+  updateOwner(nft: NFT) {}
 }

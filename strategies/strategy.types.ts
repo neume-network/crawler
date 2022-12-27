@@ -34,4 +34,6 @@ export declare class Strategy {
    * NFT needs to be skipped.
    */
   crawl: (nft: NFT) => Promise<Track | null>;
+
+  updateOwner: (nft: NFT) => void;
 }

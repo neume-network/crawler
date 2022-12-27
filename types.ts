@@ -48,7 +48,7 @@ export type Contract = {
 export type NFT = {
   platform: Omit<Contract, "address">;
   erc721: {
-    createdAt: number;
+    blockNumber: number;
     address: string;
     token: {
       minting: {
