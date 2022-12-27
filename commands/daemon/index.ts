@@ -60,7 +60,7 @@ async function startServer() {
     },
   });
 
-  return fastify.listen({ port: 8080 }, (err, address) => {
+  return fastify.listen({ port: 8080, host: "::" }, (err, address) => {
     if (err) {
       console.error(err);
       process.exit(1);
