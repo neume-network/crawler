@@ -59,7 +59,7 @@ export default class SoundProtocol {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
                 return null;
             }
-            nft = await callTokenUri(this.worker, this.config, nft.erc721.createdAt, nft);
+            nft = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
             nft = await getArweaveTokenUri(this.worker, this.config, nft);
             if (!nft.erc721.token.uri)
                 throw new Error(`tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
@@ -80,7 +80,7 @@ export default class SoundProtocol {
                 },
                 erc721: {
                     version: SoundProtocol.version,
-                    createdAt: nft.erc721.createdAt,
+                    createdAt: nft.erc721.blockNumber,
                     // TODO: Stop hard coding this value
                     owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
                     address: nft.erc721.address,
@@ -110,6 +110,7 @@ export default class SoundProtocol {
         this.worker = worker;
         this.config = config;
     }
+    updateOwner(nft) { }
 }
 SoundProtocol.version = "1.0.0";
 SoundProtocol.createdAtBlock = 15570834;

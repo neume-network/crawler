@@ -8,7 +8,7 @@ export default class Zora {
         this.config = config;
     }
     async crawl(nft) {
-        nft = await callTokenUri(this.worker, this.config, nft.erc721.createdAt, nft);
+        nft = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
         if (!nft.erc721.token.uri)
             throw new Error(`tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
         nft.erc721.token.uri = anyIpfsToNativeIpfs(nft.erc721.token.uri);

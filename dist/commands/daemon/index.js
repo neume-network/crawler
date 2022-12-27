@@ -6,14 +6,14 @@ import filter_contracts from "../filter_contracts.js";
 import { db } from "../../database/index.js";
 import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
 const fastify = Fastify();
-export default async function daemon(from, crawlFlag, config, strategyNames) {
+export default async function daemon(from, crawlFlag, recrawl, config, strategyNames) {
     let to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
     const strategies = getStrategies(strategyNames, from, to);
     const task = async () => {
         console.log("Starting a crawl cycle");
         to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
-        await filter_contracts(from, to, config, strategies);
-        await crawl(from, to, config, strategies);
+        await filter_contracts(from, to, recrawl, config, strategies);
+        await crawl(from, to, recrawl, config, strategies);
         from = to;
         setTimeout(task, 10);
     };

@@ -26,10 +26,15 @@ const argv = yargs(hideBin(process.argv))
         type: "number",
         describe: "From block number",
     },
+    recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+    },
 }, async (argv) => {
     const from = argv.from;
     const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-    await crawl(from, to, config, getStrategies(strategyNames, from, to));
+    await crawl(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
     process.exit(0);
 })
     .command("filter-contracts", "Find new contracts", {
@@ -42,10 +47,15 @@ const argv = yargs(hideBin(process.argv))
         type: "number",
         describe: "From block number",
     },
+    recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+    },
 }, async (argv) => {
     const from = argv.from;
     const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-    await filterContracts(from, to, config, getStrategies(strategyNames, from, to));
+    await filterContracts(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
     process.exit(0);
 })
     .command("dump", "Export database as JSON", {
@@ -69,8 +79,13 @@ const argv = yargs(hideBin(process.argv))
         describe: "Flag for crawler",
         default: true,
     },
+    recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+    },
 }, async (argv) => {
-    await daemon(argv.from, argv.crawl, config, strategyNames);
+    await daemon(argv.from, argv.crawl, argv.recrawl, config, strategyNames);
 })
     .command("sync", "Sync neume-network with another node", {
     url: {
