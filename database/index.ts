@@ -176,3 +176,5 @@ export class DB {
 }
 
 export const db = new DB(path.resolve("./data"));
+
+process.on("exit", db.level.close);

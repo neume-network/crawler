@@ -15,6 +15,7 @@ const CHAIN_ID = "1";
 export default async function (
   from: number,
   to: number,
+  recrawl: boolean,
   config: Config,
   _strategies: typeof Strategy[]
 ) {
@@ -96,6 +97,21 @@ export default async function (
             },
           };
 
+          let nftExists = false;
+
+          try {
+            nftExists = !!(await db.getOne({
+              chainId: CHAIN_ID,
+              address: nft.erc721.address,
+              tokenId: nft.erc721.token.id,
+              blockNumber: nft.erc721.blockNumber.toString(),
+            }));
+          } catch (err: any) {
+            if (err.code !== "LEVEL_NOT_FOUND") throw err;
+          }
+
+          if (!recrawl && nftExists) return;
+
           const strategy = strategies.find(
             (s) => s.constructor.name === nft.platform.name
           );
@@ -130,6 +146,5 @@ export default async function (
     }
   }
 
-  await db.level.close();
   console.log("Exiting from crawl command");
 }

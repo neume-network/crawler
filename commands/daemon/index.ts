@@ -14,6 +14,7 @@ const fastify = Fastify();
 export default async function daemon(
   from: number,
   crawlFlag: boolean,
+  recrawl: boolean,
   config: Config,
   strategyNames: string[]
 ) {
@@ -25,8 +26,8 @@ export default async function daemon(
 
     to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
 
-    await filter_contracts(from, to, config, strategies);
-    await crawl(from, to, config, strategies);
+    await filter_contracts(from, to, recrawl, config, strategies);
+    await crawl(from, to, recrawl, config, strategies);
 
     from = to;
     setTimeout(task, 10);

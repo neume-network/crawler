@@ -36,11 +36,22 @@ const argv = yargs(hideBin(process.argv))
         type: "number",
         describe: "From block number",
       },
+      recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+      },
     },
     async (argv) => {
       const from = argv.from;
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      await crawl(from, to, config, getStrategies(strategyNames, from, to));
+      await crawl(
+        from,
+        to,
+        argv.recrawl,
+        config,
+        getStrategies(strategyNames, from, to)
+      );
       process.exit(0);
     }
   )
@@ -57,6 +68,11 @@ const argv = yargs(hideBin(process.argv))
         type: "number",
         describe: "From block number",
       },
+      recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+      },
     },
     async (argv) => {
       const from = argv.from;
@@ -64,6 +80,7 @@ const argv = yargs(hideBin(process.argv))
       await filterContracts(
         from,
         to,
+        argv.recrawl,
         config,
         getStrategies(strategyNames, from, to)
       );
@@ -99,9 +116,14 @@ const argv = yargs(hideBin(process.argv))
         describe: "Flag for crawler",
         default: true,
       },
+      recrawl: {
+        type: "boolean",
+        describe: "Re-crawl an NFT if they already exist",
+        default: false,
+      },
     },
     async (argv) => {
-      await daemon(argv.from, argv.crawl, config, strategyNames);
+      await daemon(argv.from, argv.crawl, argv.recrawl, config, strategyNames);
     }
   )
   .command(

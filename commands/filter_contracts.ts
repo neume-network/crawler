@@ -9,6 +9,7 @@ import { getContracts } from "../utils.js";
 export default async function (
   from: number,
   to: number,
+  recrawl: boolean,
   config: Config,
   _strategies: typeof Strategy[]
 ) {
