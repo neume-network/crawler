@@ -1,6 +1,14 @@
 // All common types are declared here
 import { Config as ExtractionWorkerConfig } from "@neume-network/schema";
 
+export const CONSTANTS = {
+  DATA_DIR: "data",
+  STATE: {
+    LAST_SYNC: "last_synced_block",
+    LAST_CRAWL: "last_crawled_block",
+  },
+};
+
 export type RpcConfig = {
   url: string;
   key?: string;
@@ -59,4 +67,5 @@ export type NFT = {
       uriContent?: Record<any, any>;
     };
   };
+  metadata: Record<string, any>;
 };

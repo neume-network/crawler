@@ -8,16 +8,18 @@ import filter_contracts from "../filter_contracts.js";
 import { db } from "../../database/index.js";
 import { DaemonJsonrpcType } from "./daemon-jsonrpc-type.js";
 import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
+import { getLastCrawledBlock, saveLastCrawledBlock } from "../../src/state.js";
 
 const fastify = Fastify();
 
 export default async function daemon(
-  from: number,
+  _from: number | undefined,
   crawlFlag: boolean,
   recrawl: boolean,
   config: Config,
   strategyNames: string[]
 ) {
+  let from = _from ?? (await getLastCrawledBlock());
   let to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
   const strategies = getStrategies(strategyNames, from, to);
 
@@ -29,6 +31,7 @@ export default async function daemon(
     await filter_contracts(from, to, recrawl, config, strategies);
     await crawl(from, to, recrawl, config, strategies);
 
+    await saveLastCrawledBlock(to);
     from = to;
     setTimeout(task, 10);
   };
