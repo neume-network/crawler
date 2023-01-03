@@ -72,7 +72,6 @@ const argv = yargs(hideBin(process.argv))
     from: {
         type: "number",
         describe: "From block number",
-        demandOption: true,
     },
     crawl: {
         type: "boolean",

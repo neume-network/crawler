@@ -1,12 +1,12 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
 import { toHex } from "eth-fun";
 import { db } from "../database/index.js";
-import { getContracts, randomItem } from "../utils.js";
+import { getAllContracts, randomItem } from "../utils.js";
 const TRANSFER_EVENT_SELECTOR = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const FROM_EVENT_SELECTOR = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const CHAIN_ID = "1";
 export default async function (from, to, recrawl, config, _strategies) {
-    const contracts = await getContracts();
+    const contracts = await getAllContracts();
     const worker = ExtractionWorker(config.worker);
     const strategies = _strategies.map((s) => new s(worker, config));
     for (let i = from; i <= to; i += config.step.block) {
@@ -67,6 +67,7 @@ export default async function (from, to, recrawl, config, _strategies) {
                             id: BigInt(log.topics[3]).toString(10),
                         },
                     },
+                    metadata: {},
                 };
                 let nftExists = false;
                 try {
@@ -84,8 +85,18 @@ export default async function (from, to, recrawl, config, _strategies) {
                 if (!recrawl && nftExists)
                     return;
                 const strategy = strategies.find((s) => s.constructor.name === nft.platform.name);
+                if (!strategy) {
+                    throw new Error(`Couldn't find any strategy with the name of ${nft.platform.name} for address ${nft.erc721.address}`);
+                }
                 if (log.topics[1] === FROM_EVENT_SELECTOR) {
-                    const track = await strategy?.crawl(nft);
+                    let track = null;
+                    try {
+                        track = await strategy?.crawl(nft);
+                    }
+                    catch (err) {
+                        console.error(`Error occurured while crawling\n`, err, JSON.stringify(nft, null, 2));
+                        throw err; // Re-throwing to stop the application
+                    }
                     if (track !== null) {
                         await db.insert({
                             chainId: CHAIN_ID,
@@ -93,8 +104,8 @@ export default async function (from, to, recrawl, config, _strategies) {
                             tokenId: nft.erc721.token.id,
                             blockNumber: nft.erc721.blockNumber.toString(),
                         }, track);
+                        console.log("Found track:", track?.title, track?.platform.name, "at", track?.erc721.createdAt);
                     }
-                    console.log("Found track:", track?.title, track?.platform.name, "at", track?.erc721.createdAt);
                 }
                 else {
                     strategy?.updateOwner(nft);

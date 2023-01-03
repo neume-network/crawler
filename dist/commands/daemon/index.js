@@ -5,8 +5,10 @@ import crawl from "../crawl.js";
 import filter_contracts from "../filter_contracts.js";
 import { db } from "../../database/index.js";
 import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
+import { getLastCrawledBlock, saveLastCrawledBlock } from "../../src/state.js";
 const fastify = Fastify();
-export default async function daemon(from, crawlFlag, recrawl, config, strategyNames) {
+export default async function daemon(_from, crawlFlag, recrawl, config, strategyNames) {
+    let from = _from ?? (await getLastCrawledBlock());
     let to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
     const strategies = getStrategies(strategyNames, from, to);
     const task = async () => {
@@ -14,6 +16,7 @@ export default async function daemon(from, crawlFlag, recrawl, config, strategyN
         to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
         await filter_contracts(from, to, recrawl, config, strategies);
         await crawl(from, to, recrawl, config, strategies);
+        await saveLastCrawledBlock(to);
         from = to;
         setTimeout(task, 10);
     };

@@ -113,4 +113,6 @@ export class DB {
     async flush() { }
 }
 export const db = new DB(path.resolve("./data"));
-process.on("exit", db.level.close);
+process.on("exit", async () => {
+    await db.level.close();
+});

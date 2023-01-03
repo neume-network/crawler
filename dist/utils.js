@@ -2,6 +2,8 @@ import { readFile } from "fs/promises";
 import path from "path";
 import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
+import { CONSTANTS } from "./types.js";
+import Zora from "./strategies/zora.js";
 export function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -32,17 +34,23 @@ export function getLatestBlockNumber(rpcHost) {
         req.end();
     });
 }
+export async function getDefaultContracts() {
+    const defaultContractsPath = new URL(CONSTANTS.HARDCODE_CONTRACTS, import.meta.url);
+    return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
+}
+export async function getUserContracts() {
+    const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
+    return JSON.parse(await readFile(userContractsPath, "utf-8"));
+}
 /**
  * User's contracts.json contains the new found addresses
- * Neume's contracts.json contains hardcoded addresses
+ * Neume's contracts.hardcode.json contains hardcoded addresses
  * This function reads and merge them both.
  */
-export async function getContracts() {
-    const defaultContractsPath = new URL("./contracts.hardcode.json", import.meta.url);
-    const userContractsPath = path.resolve("./contracts.json");
+export async function getAllContracts() {
     return {
-        ...JSON.parse(await readFile(defaultContractsPath, "utf-8")),
-        ...JSON.parse(await readFile(userContractsPath, "utf-8")),
+        ...(await getDefaultContracts()),
+        ...(await getUserContracts()),
     };
 }
 /**
@@ -52,7 +60,7 @@ export async function getContracts() {
  * then modify this function.
  */
 export function getStrategies(strategyNames, from, to) {
-    const strategies = [SoundProtocol];
+    const strategies = [SoundProtocol, Zora];
     return strategies.filter((s) => s.createdAtBlock <= from &&
         to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
         strategyNames.includes(s.name));

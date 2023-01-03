@@ -1,7 +1,7 @@
 import { encodeFunctionCall, decodeParameters, toHex } from "eth-fun";
 import { randomItem } from "../utils.js";
-export async function callTokenUri(worker, config, blockNumber, nft) {
-    const signature = {
+export async function callTokenUri(worker, config, blockNumber, nft, overrideSignature) {
+    const signature = overrideSignature ?? {
         name: "tokenURI",
         type: "function",
         inputs: [
@@ -43,6 +43,10 @@ export async function callTokenUri(worker, config, blockNumber, nft) {
     const ret = await worker(msg);
     if (ret.error)
         throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(msg, null, 2)} \n${JSON.stringify(nft, null, 2)}`);
-    nft.erc721.token.uri = decodeParameters(["string"], ret.results)[0];
-    return nft;
+    const uri = decodeParameters(["string"], ret.results)[0];
+    if (!uri)
+        throw new Error(`tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
+    if (typeof uri !== "string")
+        throw new Error(`typeof tokenURI invalid ${JSON.stringify(nft, null, 2)}`);
+    return uri;
 }

@@ -59,12 +59,8 @@ export default class SoundProtocol {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
                 return null;
             }
-            nft = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
-            nft = await getArweaveTokenUri(this.worker, this.config, nft);
-            if (!nft.erc721.token.uri)
-                throw new Error(`tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
-            if (!nft.erc721.token.uriContent)
-                throw new Error(`tokenURI content shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
+            nft.erc721.token.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
+            nft.erc721.token.uriContent = await getArweaveTokenUri(nft.erc721.token.uri, this.worker, this.config);
             const datum = nft.erc721.token.uriContent;
             return {
                 version: SoundProtocol.version,
