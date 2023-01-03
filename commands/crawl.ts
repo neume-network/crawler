@@ -3,7 +3,7 @@ import { toHex } from "eth-fun";
 
 import { db } from "../database/index.js";
 import { JsonRpcLog, NFT, Config } from "../types.js";
-import { getContracts, randomItem } from "../utils.js";
+import { getAllContracts, randomItem } from "../utils.js";
 import { Strategy } from "../strategies/strategy.types.js";
 
 const TRANSFER_EVENT_SELECTOR =
@@ -19,7 +19,7 @@ export default async function (
   config: Config,
   _strategies: typeof Strategy[]
 ) {
-  const contracts = await getContracts();
+  const contracts = await getAllContracts();
   const worker = ExtractionWorker(config.worker);
   const strategies = _strategies.map((s) => new s(worker, config));
 
@@ -95,6 +95,7 @@ export default async function (
                 id: BigInt(log.topics[3]).toString(10),
               },
             },
+            metadata: {},
           };
 
           let nftExists = false;
@@ -116,8 +117,24 @@ export default async function (
             (s) => s.constructor.name === nft.platform.name
           );
 
+          if (!strategy) {
+            throw new Error(
+              `Couldn't find any strategy with the name of ${nft.platform.name} for address ${nft.erc721.address}`
+            );
+          }
+
           if (log.topics[1] === FROM_EVENT_SELECTOR) {
-            const track = await strategy?.crawl(nft);
+            let track = null;
+            try {
+              track = await strategy?.crawl(nft);
+            } catch (err) {
+              console.error(
+                `Error occurured while crawling\n`,
+                err,
+                JSON.stringify(nft, null, 2)
+              );
+              throw err; // Re-throwing to stop the application
+            }
 
             if (track !== null) {
               await db.insert(
@@ -129,15 +146,15 @@ export default async function (
                 },
                 track
               );
-            }
 
-            console.log(
-              "Found track:",
-              track?.title,
-              track?.platform.name,
-              "at",
-              track?.erc721.createdAt
-            );
+              console.log(
+                "Found track:",
+                track?.title,
+                track?.platform.name,
+                "at",
+                track?.erc721.createdAt
+              );
+            }
           } else {
             strategy?.updateOwner(nft);
           }
