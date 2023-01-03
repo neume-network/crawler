@@ -2,17 +2,17 @@ import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { Jsonrpc } from "@neume-network/schema";
 import { encodeFunctionCall, decodeParameters, toHex } from "eth-fun";
 
-import { NFT } from "../types.js";
-import { Config } from "../types.js";
+import { Config, NFT } from "../types.js";
 import { randomItem } from "../utils.js";
 
 export async function callTokenUri(
   worker: ExtractionWorkerHandler,
   config: Config,
   blockNumber: number,
-  nft: NFT
-) {
-  const signature = {
+  nft: NFT,
+  overrideSignature?: Record<string, any>
+): Promise<string> {
+  const signature = overrideSignature ?? {
     name: "tokenURI",
     type: "function",
     inputs: [
@@ -63,7 +63,15 @@ export async function callTokenUri(
       )} \n${JSON.stringify(nft, null, 2)}`
     );
 
-  nft.erc721.token.uri = decodeParameters(["string"], ret.results)[0];
+  const uri = decodeParameters(["string"], ret.results)[0];
 
-  return nft;
+  if (!uri)
+    throw new Error(
+      `tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`
+    );
+
+  if (typeof uri !== "string")
+    throw new Error(`typeof tokenURI invalid ${JSON.stringify(nft, null, 2)}`);
+
+  return uri;
 }

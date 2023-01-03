@@ -1,23 +1,21 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 
-import { Config, NFT } from "../types.js";
+import { Config } from "../types.js";
 
 export async function getArweaveTokenUri(
+  uri: string,
   worker: ExtractionWorkerHandler,
-  config: Config,
-  nft: NFT
+  config: Config
 ) {
   if (!config.arweave?.httpsGateway)
-    throw new Error(`Arweave gateway is required for ${JSON.stringify(nft)}`);
-  if (!nft.erc721.token.uri)
-    throw new Error(`tokenURI required to fetch content`);
+    throw new Error(`Arweave gateway is required ${uri}`);
 
   const msg = await worker({
     type: "arweave",
     commissioner: "",
     version: "0.0.1",
     options: {
-      uri: nft.erc721.token.uri,
+      uri: uri,
       gateway: config.arweave.httpsGateway,
       retry: {
         retries: 3,
@@ -27,13 +25,8 @@ export async function getArweaveTokenUri(
 
   if (msg.error)
     throw new Error(
-      `Error while fetching Arweave URI: ${JSON.stringify(
-        msg,
-        null,
-        2
-      )} \n${JSON.stringify(nft, null, 2)}`
+      `Error while fetching Arweave URI: ${JSON.stringify(msg, null, 2)}`
     );
 
-  nft.erc721.token.uriContent = msg.results as any;
-  return nft;
+  return msg.results as Record<any, any>;
 }

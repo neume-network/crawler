@@ -1,34 +1,36 @@
-import { messages } from "../extraction-worker/src/api.mjs";
-import { env } from "process";
-import { NFT } from "../types.js";
+import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 
-const { route } = messages;
+import { Config, NFT } from "../types.js";
 
-function makeRequest(tokenURI: string) {
-  return {
+export async function getIpfsTokenUri(
+  uri: string,
+  worker: ExtractionWorkerHandler,
+  config: Config
+): Promise<Record<any, any>> {
+  if (!config.ipfs)
+    throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
+
+  const msg = await worker({
     type: "ipfs",
     version: "0.0.1",
+    commissioner: "",
     options: {
-      uri: tokenURI,
-      gateway: env.IPFS_HTTPS_GATEWAY,
+      uri: uri,
+      gateway: config.ipfs.httpsGateway,
+      retry: {
+        retries: 3,
+      },
     },
-  };
-}
+  });
 
-export async function getIpfsTokenUri(nft: NFT) {
-  if (!nft.erc721.token.uri)
-    throw new Error(
-      `tokenURI required for IPFS: ${JSON.stringify(nft, null, 2)}`
-    );
-  const msg = await route(makeRequest(nft.erc721.token.uri));
   if (msg.error)
     throw new Error(
-      `Error while fetching IPFS URI: ${JSON.stringify(
-        msg,
-        null,
-        2
-      )} \n${JSON.stringify(nft, null, 2)}`
+      `Error while fetching IPFS URI: ${JSON.stringify(msg, null, 2)}`
     );
-  nft.erc721.token.uriContent = msg.results;
-  return nft;
+
+  const content = msg.results;
+
+  if (!content) throw new Error(`tokenURI content shouldn't be empty`);
+
+  return content;
 }
