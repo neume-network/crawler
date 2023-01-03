@@ -7,6 +7,8 @@ export const CONSTANTS = {
     LAST_SYNC: "last_synced_block",
     LAST_CRAWL: "last_crawled_block",
   },
+  USER_CONTRACTS: "contracts.json",
+  HARDCODE_CONTRACTS: "contracts.hardcode.json",
 };
 
 export type RpcConfig = {

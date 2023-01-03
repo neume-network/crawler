@@ -3,7 +3,8 @@ import path from "path";
 import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import { Strategy } from "./strategies/strategy.types.js";
-import { RpcConfig } from "./types.js";
+import { CONSTANTS, RpcConfig } from "./types.js";
+import Zora from "./strategies/zora.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -44,21 +45,30 @@ export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
   });
 }
 
-/**
- * User's contracts.json contains the new found addresses
- * Neume's contracts.json contains hardcoded addresses
- * This function reads and merge them both.
- */
-export async function getContracts(): Promise<Record<string, any>> {
+export async function getDefaultContracts(): Promise<Record<string, any>> {
   const defaultContractsPath = new URL(
-    "./contracts.hardcode.json",
+    CONSTANTS.HARDCODE_CONTRACTS,
     import.meta.url
   );
-  const userContractsPath = path.resolve("./contracts.json");
 
+  return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
+}
+
+export async function getUserContracts(): Promise<Record<string, any>> {
+  const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
+
+  return JSON.parse(await readFile(userContractsPath, "utf-8"));
+}
+
+/**
+ * User's contracts.json contains the new found addresses
+ * Neume's contracts.hardcode.json contains hardcoded addresses
+ * This function reads and merge them both.
+ */
+export async function getAllContracts(): Promise<Record<string, any>> {
   return {
-    ...JSON.parse(await readFile(defaultContractsPath, "utf-8")),
-    ...JSON.parse(await readFile(userContractsPath, "utf-8")),
+    ...(await getDefaultContracts()),
+    ...(await getUserContracts()),
   };
 }
 
@@ -73,7 +83,7 @@ export function getStrategies(
   from: number,
   to: number
 ) {
-  const strategies: Array<typeof Strategy> = [SoundProtocol];
+  const strategies: Array<typeof Strategy> = [SoundProtocol, Zora];
 
   return strategies.filter(
     (s) =>
