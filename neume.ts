@@ -13,7 +13,7 @@ import crawl from "./commands/crawl.js";
 import dump from "./commands/dump.js";
 import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./utils.js";
-import daemon from "./commands/daemon/daemon.js";
+import daemon from "./commands/daemon.js";
 import sync from "./commands/sync.js";
 import { db } from "./database/index.js";
 
