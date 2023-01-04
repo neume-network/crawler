@@ -7,7 +7,7 @@ import { db } from "../../database/index.js";
 import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
 import { getLastCrawledBlock, saveLastCrawledBlock } from "../../src/state.js";
 const fastify = Fastify();
-export default async function daemon(_from, crawlFlag, recrawl, config, strategyNames) {
+export default async function daemon(_from, crawlFlag, recrawl, port, config, strategyNames) {
     let from = _from ?? (await getLastCrawledBlock());
     let to = Math.min(from + 5000, await getLatestBlockNumber(config.rpc[0]));
     const strategies = getStrategies(strategyNames, from, to);
@@ -22,9 +22,9 @@ export default async function daemon(_from, crawlFlag, recrawl, config, strategy
     };
     if (crawlFlag)
         task();
-    await startServer();
+    await startServer(port);
 }
-async function startServer() {
+async function startServer(port) {
     const server = new JSONRPCServer();
     server.addMethod("getIdsChanged_fill", async ([from, to]) => {
         if (to - from > 5000)
@@ -43,7 +43,7 @@ async function startServer() {
             return res;
         },
     });
-    return fastify.listen({ port: 8080, host: "::" }, (err, address) => {
+    return fastify.listen({ port, host: "::" }, (err, address) => {
         if (err) {
             console.error(err);
             process.exit(1);

@@ -16,6 +16,7 @@ export default async function daemon(
   _from: number | undefined,
   crawlFlag: boolean,
   recrawl: boolean,
+  port: number,
   config: Config,
   strategyNames: string[]
 ) {
@@ -37,10 +38,10 @@ export default async function daemon(
   };
 
   if (crawlFlag) task();
-  await startServer();
+  await startServer(port);
 }
 
-async function startServer() {
+async function startServer(port: number) {
   const server = new JSONRPCServer();
   server.addMethod("getIdsChanged_fill", async ([from, to]) => {
     if (to - from > 5000)
@@ -64,7 +65,7 @@ async function startServer() {
     },
   });
 
-  return fastify.listen({ port: 8080, host: "::" }, (err, address) => {
+  return fastify.listen({ port, host: "::" }, (err, address) => {
     if (err) {
       console.error(err);
       process.exit(1);

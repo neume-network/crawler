@@ -115,15 +115,30 @@ const argv = yargs(hideBin(process.argv))
         type: "boolean",
         describe: "Flag for crawler",
         default: true,
+        defaultDescription: "true",
       },
       recrawl: {
         type: "boolean",
         describe: "Re-crawl an NFT if they already exist",
         default: false,
+        defaultDescription: "false",
+      },
+      port: {
+        type: "number",
+        describe: "Port for the daemon",
+        default: 8080,
+        defaultDescription: "8080",
       },
     },
     async (argv) => {
-      await daemon(argv.from, argv.crawl, argv.recrawl, config, strategyNames);
+      await daemon(
+        argv.from,
+        argv.crawl,
+        argv.recrawl,
+        argv.port,
+        config,
+        strategyNames
+      );
     }
   )
   .command(
