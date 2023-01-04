@@ -6,4 +6,5 @@ export const CONSTANTS = {
     },
     USER_CONTRACTS: "contracts.json",
     HARDCODE_CONTRACTS: "contracts.hardcode.json",
+    FIRST_BLOCK: 15000000,
 };
