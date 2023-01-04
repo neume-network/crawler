@@ -1,11 +1,11 @@
 import { fastify as Fastify } from "fastify";
 import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
-import { getLatestBlockNumber, getStrategies } from "../../utils.js";
-import crawl from "../crawl.js";
-import filter_contracts from "../filter_contracts.js";
-import { db } from "../../database/index.js";
-import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
-import { getLastCrawledBlock, saveLastCrawledBlock } from "../../src/state.js";
+import { getLatestBlockNumber, getStrategies } from "../utils.js";
+import crawl from "./crawl.js";
+import filter_contracts from "./filter_contracts.js";
+import { db } from "../database/index.js";
+import { daemonJsonrpcSchema } from "./daemon/daemon-jsonrpc-schema.js";
+import { getLastCrawledBlock, saveLastCrawledBlock } from "../src/state.js";
 const fastify = Fastify();
 export default async function daemon(_from, crawlFlag, recrawl, port, config, strategyNames) {
     let from = _from ?? (await getLastCrawledBlock());

@@ -1,14 +1,14 @@
 import { fastify as Fastify } from "fastify";
 import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
 
-import { Config } from "../../types.js";
-import { getLatestBlockNumber, getStrategies } from "../../utils.js";
-import crawl from "../crawl.js";
-import filter_contracts from "../filter_contracts.js";
-import { db } from "../../database/index.js";
-import { DaemonJsonrpcType } from "./daemon-jsonrpc-type.js";
-import { daemonJsonrpcSchema } from "./daemon-jsonrpc-schema.js";
-import { getLastCrawledBlock, saveLastCrawledBlock } from "../../src/state.js";
+import { Config } from "../types.js";
+import { getLatestBlockNumber, getStrategies } from "../utils.js";
+import crawl from "./crawl.js";
+import filter_contracts from "./filter_contracts.js";
+import { db } from "../database/index.js";
+import { DaemonJsonrpcType } from "./daemon/daemon-jsonrpc-type.js";
+import { daemonJsonrpcSchema } from "./daemon/daemon-jsonrpc-schema.js";
+import { getLastCrawledBlock, saveLastCrawledBlock } from "../src/state.js";
 
 const fastify = Fastify();
 
