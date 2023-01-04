@@ -4,9 +4,17 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import { db, ReturnValue } from "../database/index.js";
 import { Config } from "../types.js";
 
+async function getLastSyncedBlock() {
+  const lastId = await db.changeIndex
+    .iterator({ reverse: true, limit: 1 })
+    .next();
+  return lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
+}
+
 export default async function (
+  from: number | undefined,
+  to: number,
   url: string,
-  latestBlockNumber: number,
   config: Config
 ) {
   const worker = ExtractionWorker(config.worker);
@@ -38,17 +46,11 @@ export default async function (
     () => (++id).toString() // HACK because of a bug in JSON-RPC-Client
   );
 
-  const lastId = await db.changeIndex
-    .iterator({ reverse: true, limit: 1 })
-    .next();
-  const lastSyncedBlock = lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
+  let syncFrom = from ?? (await getLastSyncedBlock());
 
-  console.log("Will sync from", lastSyncedBlock, "to", latestBlockNumber);
-  for (
-    let syncedTill = lastSyncedBlock;
-    syncedTill <= latestBlockNumber;
-    syncedTill += 5000
-  ) {
+  console.log("Will sync from", syncFrom, "to", to);
+
+  for (let syncedTill = syncFrom; syncedTill <= to; syncedTill += 5000) {
     console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
     const returnValues = (await client.request("getIdsChanged_fill", [
       syncedTill.toString(),

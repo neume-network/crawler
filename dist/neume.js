@@ -24,7 +24,7 @@ const argv = yargs(hideBin(process.argv))
     },
     to: {
         type: "number",
-        describe: "From block number",
+        describe: "To block number",
     },
     recrawl: {
         type: "boolean",
@@ -72,6 +72,7 @@ const argv = yargs(hideBin(process.argv))
     from: {
         type: "number",
         describe: "From block number",
+        defaultDescription: "Last crawled block number",
     },
     crawl: {
         type: "boolean",
@@ -89,12 +90,22 @@ const argv = yargs(hideBin(process.argv))
     .command("sync", "Sync neume-network with another node", {
     url: {
         type: "string",
-        describe: "An endpoint that is running neume-network daemon",
+        describe: "An endpoint that is running the neume-network daemon",
         demandOption: true,
     },
+    from: {
+        type: "number",
+        describe: "From block number",
+        defaultDescription: "Uses the database to calculate the last synced block",
+    },
+    to: {
+        type: "number",
+        describe: "To block number",
+        defaultDescription: "Syncs to the latest block number",
+    },
 }, async (argv) => {
-    const latestBlockNumber = await getLatestBlockNumber(config.rpc[0]);
-    await sync(argv.url, latestBlockNumber, config);
+    const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
+    await sync(argv.from, to, argv.url, config);
     process.exit(0);
 })
     .command("create-change-index", "Create change index from primary database", async (argv) => {

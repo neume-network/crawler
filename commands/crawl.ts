@@ -28,6 +28,8 @@ export default async function (
     const toBlock = Math.min(to, i + config.step.block);
     console.log("Crawling from", fromBlock, "to", toBlock);
 
+    // TODO: This can be made faster by selecting only contracts
+    // whose strategies are present.
     for (
       let j = 0;
       j < Object.keys(contracts).length;
