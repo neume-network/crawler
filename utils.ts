@@ -3,7 +3,7 @@ import path from "path";
 import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import { Strategy } from "./strategies/strategy.types.js";
-import { CONSTANTS, RpcConfig } from "./types.js";
+import { CONSTANTS, Contracts, RpcConfig } from "./types.js";
 import Zora from "./strategies/zora.js";
 
 export function randomItem<T>(arr: Array<T>): T {
@@ -45,7 +45,7 @@ export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
   });
 }
 
-export async function getDefaultContracts(): Promise<Record<string, any>> {
+export async function getDefaultContracts(): Promise<Contracts> {
   const defaultContractsPath = new URL(
     CONSTANTS.HARDCODE_CONTRACTS,
     import.meta.url
@@ -54,7 +54,7 @@ export async function getDefaultContracts(): Promise<Record<string, any>> {
   return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
 }
 
-export async function getUserContracts(): Promise<Record<string, any>> {
+export async function getUserContracts(): Promise<Contracts> {
   const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
 
   return JSON.parse(await readFile(userContractsPath, "utf-8"));
@@ -65,7 +65,7 @@ export async function getUserContracts(): Promise<Record<string, any>> {
  * Neume's contracts.hardcode.json contains hardcoded addresses
  * This function reads and merge them both.
  */
-export async function getAllContracts(): Promise<Record<string, any>> {
+export async function getAllContracts(): Promise<Contracts> {
   return {
     ...(await getDefaultContracts()),
     ...(await getUserContracts()),

@@ -2,7 +2,7 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import { toHex } from "eth-fun";
 
 import { db } from "../database/index.js";
-import { JsonRpcLog, NFT, Config } from "../types.js";
+import { JsonRpcLog, NFT, Config, Contracts } from "../types.js";
 import { getAllContracts, randomItem } from "../utils.js";
 import { Strategy } from "../strategies/strategy.types.js";
 
@@ -19,7 +19,15 @@ export default async function (
   config: Config,
   _strategies: typeof Strategy[]
 ) {
-  const contracts = await getAllContracts();
+  const allContracts = await getAllContracts();
+  const contracts = Object.entries(allContracts).reduce(
+    (prevValue, [addr, info]) => {
+      if (_strategies.filter((s) => s.name === info.name).length)
+        prevValue = { ...prevValue, ...{ [addr]: info } };
+      return prevValue;
+    },
+    {} as Contracts
+  );
   const worker = ExtractionWorker(config.worker);
   const strategies = _strategies.map((s) => new s(worker, config));
 
@@ -28,8 +36,6 @@ export default async function (
     const toBlock = Math.min(to, i + config.step.block);
     console.log("Crawling from", fromBlock, "to", toBlock);
 
-    // TODO: This can be made faster by selecting only contracts
-    // whose strategies are present.
     for (
       let j = 0;
       j < Object.keys(contracts).length;

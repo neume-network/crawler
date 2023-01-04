@@ -6,15 +6,18 @@ const TRANSFER_EVENT_SELECTOR = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a
 const FROM_EVENT_SELECTOR = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const CHAIN_ID = "1";
 export default async function (from, to, recrawl, config, _strategies) {
-    const contracts = await getAllContracts();
+    const allContracts = await getAllContracts();
+    const contracts = Object.entries(allContracts).reduce((prevValue, [addr, info]) => {
+        if (_strategies.filter((s) => s.name === info.name).length)
+            prevValue = { ...prevValue, ...{ [addr]: info } };
+        return prevValue;
+    }, {});
     const worker = ExtractionWorker(config.worker);
     const strategies = _strategies.map((s) => new s(worker, config));
     for (let i = from; i <= to; i += config.step.block) {
         const fromBlock = i;
         const toBlock = Math.min(to, i + config.step.block);
         console.log("Crawling from", fromBlock, "to", toBlock);
-        // TODO: This can be made faster by selecting only contracts
-        // whose strategies are present.
         for (let j = 0; j < Object.keys(contracts).length; j += config.step.contract) {
             const contractsSlice = Object.keys(contracts).slice(j, j + config.step.contract);
             const rpcHost = randomItem(config.rpc);

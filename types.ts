@@ -56,6 +56,8 @@ export type Contract = {
   version: string;
 };
 
+export type Contracts = Record<string, Omit<Contract, "address">>;
+
 export type NFT = {
   platform: Omit<Contract, "address">;
   erc721: {
