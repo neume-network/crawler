@@ -5,13 +5,24 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type GetIdsChanged = string[];
+export type DaemonJsonrpcType = Request | Request[];
+export type Request = GetIdsChangedFill | GetUserContracts;
 
-export interface DaemonJsonrpcType {
+export interface GetIdsChangedFill {
   jsonrpc: "2.0";
   id: string;
-  method: string;
-  params?: GetIdsChanged;
+  method: "getIdsChanged_fill";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  params: [string, string];
+  [k: string]: unknown;
+}
+export interface GetUserContracts {
+  jsonrpc: "2.0";
+  id: string;
+  method: "getUserContracts";
   [k: string]: unknown;
 }
 

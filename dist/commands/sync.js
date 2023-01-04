@@ -1,6 +1,10 @@
 import { JSONRPCClient } from "json-rpc-2.0";
 import ExtractionWorker from "@neume-network/extraction-worker";
+import fs from "fs/promises";
 import { db } from "../database/index.js";
+import { CONSTANTS } from "../types.js";
+import path from "path";
+import { getUserContracts } from "../utils.js";
 async function getLastSyncedBlock() {
     const lastId = await db.changeIndex
         .iterator({ reverse: true, limit: 1 })
@@ -34,6 +38,13 @@ export default async function (from, to, url, config) {
     );
     let syncFrom = from ?? (await getLastSyncedBlock());
     console.log("Will sync from", syncFrom, "to", to);
+    // Sync contracts
+    const userContractsNew = await client.request("getUserContracts", null);
+    const userContractsOld = await getUserContracts();
+    const userContracts = { ...userContractsNew, ...userContractsOld };
+    const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
+    await fs.writeFile(userContractsPath, JSON.stringify(userContracts, null, 2));
+    console.log("Updated local list of contracts");
     for (let syncedTill = syncFrom; syncedTill <= to; syncedTill += 5000) {
         console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
         const returnValues = (await client.request("getIdsChanged_fill", [
