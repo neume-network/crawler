@@ -12,8 +12,8 @@ import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./utils.js";
 import daemon from "./commands/daemon.js";
 import sync from "./commands/sync.js";
+import init from "./commands/init.js";
 import { db } from "./database/index.js";
-const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
 const argv = yargs(hideBin(process.argv))
     .usage("Usage: $0 <command> <options>")
     .command("crawl", "Find new NFTs from the list of already known contracts", {
@@ -32,6 +32,7 @@ const argv = yargs(hideBin(process.argv))
         default: false,
     },
 }, async (argv) => {
+    const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
     const from = argv.from;
     const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
     await crawl(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
@@ -53,6 +54,7 @@ const argv = yargs(hideBin(process.argv))
         default: false,
     },
 }, async (argv) => {
+    const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
     const from = argv.from;
     const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
     await filterContracts(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
@@ -65,6 +67,7 @@ const argv = yargs(hideBin(process.argv))
         demandOption: true,
     },
 }, async (argv) => {
+    const { config } = await import(path.resolve("./config.js"));
     const at = argv.at ?? (await getLatestBlockNumber(config.rpc[0]));
     return dump(at);
 })
@@ -93,6 +96,7 @@ const argv = yargs(hideBin(process.argv))
         defaultDescription: "8080",
     },
 }, async (argv) => {
+    const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
     await daemon(argv.from, argv.crawl, argv.recrawl, argv.port, config, strategyNames);
 })
     .command("sync", "Sync neume-network with another node", {
@@ -112,12 +116,16 @@ const argv = yargs(hideBin(process.argv))
         defaultDescription: "Syncs to the latest block number",
     },
 }, async (argv) => {
+    const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
     const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
     await sync(argv.from, to, argv.url, config);
     process.exit(0);
 })
     .command("create-change-index", "Create change index from primary database", async (argv) => {
     return db.createChangeIndex();
+})
+    .command("init", "Initialize files required by neume at the current working directory", async (argv) => {
+    await init();
 })
     .help(true)
     .parse();

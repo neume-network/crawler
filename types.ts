@@ -9,7 +9,7 @@ export const CONSTANTS = {
   },
   USER_CONTRACTS: "contracts.json",
   HARDCODE_CONTRACTS: "contracts.hardcode.json",
-  FIRST_BLOCK: 15000000,
+  FIRST_BLOCK: 11000000,
 };
 
 export type RpcConfig = {

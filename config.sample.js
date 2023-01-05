@@ -1,3 +1,14 @@
+/**
+ * Types of configuration present here:
+ * - Configuration common for all commands
+ * - Configuration too verbose for CLI
+ * - Sensitive information
+ * 
+ * neume will read values from .env. Therefore, you can do
+ * env.RPC_API_KEYS
+ * 
+ */
+
 import { env } from "process";
 
 const rpcHosts = [
@@ -5,8 +16,21 @@ const rpcHosts = [
   { url: "https://cloudflare-eth.com/" },
 ];
 
+/**
+ * A list of strategies to enable.
+ * 
+ * The name should match the class name of the strategy.
+ * The name is case-sensitive.
+ * */
 export const strategies = ["SoundProtocol"];
 
+
+/**
+ * Configuration for neume
+ * 
+ * TypeScipt type for configuration can be found at:
+ * https://github.com/neume-network/crawler/blob/main/types.ts#L25
+ */
 export const config = {
   rpc: rpcHosts,
   arweave: {

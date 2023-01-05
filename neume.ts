@@ -15,11 +15,8 @@ import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./utils.js";
 import daemon from "./commands/daemon.js";
 import sync from "./commands/sync.js";
+import init from "./commands/init.js";
 import { db } from "./database/index.js";
-
-const { config, strategies: strategyNames } = await import(
-  path.resolve("./config.js")
-);
 
 const argv = yargs(hideBin(process.argv))
   .usage("Usage: $0 <command> <options>")
@@ -43,6 +40,9 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      const { config, strategies: strategyNames } = await import(
+        path.resolve("./config.js")
+      );
       const from = argv.from;
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
       await crawl(
@@ -75,6 +75,9 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      const { config, strategies: strategyNames } = await import(
+        path.resolve("./config.js")
+      );
       const from = argv.from;
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
       await filterContracts(
@@ -98,6 +101,7 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      const { config } = await import(path.resolve("./config.js"));
       const at = argv.at ?? (await getLatestBlockNumber(config.rpc[0]));
       return dump(at);
     }
@@ -131,6 +135,9 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      const { config, strategies: strategyNames } = await import(
+        path.resolve("./config.js")
+      );
       await daemon(
         argv.from,
         argv.crawl,
@@ -163,6 +170,9 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      const { config, strategies: strategyNames } = await import(
+        path.resolve("./config.js")
+      );
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
       await sync(argv.from, to, argv.url, config);
       process.exit(0);
@@ -173,6 +183,13 @@ const argv = yargs(hideBin(process.argv))
     "Create change index from primary database",
     async (argv) => {
       return db.createChangeIndex();
+    }
+  )
+  .command(
+    "init",
+    "Initialize files required by neume at the current working directory",
+    async (argv) => {
+      await init();
     }
   )
   .help(true)
