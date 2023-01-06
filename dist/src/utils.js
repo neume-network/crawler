@@ -2,7 +2,6 @@ import { readFile } from "fs/promises";
 import path from "path";
 import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
-import { CONSTANTS } from "./types.js";
 import Zora from "./strategies/zora.js";
 export function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
@@ -35,11 +34,11 @@ export function getLatestBlockNumber(rpcHost) {
     });
 }
 export async function getDefaultContracts() {
-    const defaultContractsPath = new URL(CONSTANTS.HARDCODE_CONTRACTS, import.meta.url);
+    const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
     return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
 }
 export async function getUserContracts() {
-    const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
+    const userContractsPath = path.resolve("./contracts.json");
     return JSON.parse(await readFile(userContractsPath, "utf-8"));
 }
 /**

@@ -57,7 +57,7 @@ export default async function (
   const userContractsNew = await client.request("getUserContracts", null);
   const userContractsOld = await getUserContracts();
   const userContracts = { ...userContractsNew, ...userContractsOld };
-  const userContractsPath = path.resolve(CONSTANTS.USER_CONTRACTS);
+  const userContractsPath = path.resolve("./contracts.json");
   await fs.writeFile(userContractsPath, JSON.stringify(userContracts, null, 2));
   console.log("Updated local list of contracts");
 

@@ -9,8 +9,8 @@
   },
   "scripts": {
     "start": "node ./dist/neume.js",
-    "build": "npm run compile-schemas && tsc -b && npm run postbuild",
-    "postbuild": "cp ./contracts.hardcode.json ./.env-copy ./config.sample.js ./dist",
+    "build": "npm run compile-schemas && tsc -b",
+    "postbuild": "cp -r ./assets ./dist",
     "compile-schemas": "node commands/daemon/daemon-jsonrpc-schema.js > commands/daemon/daemon-jsonrpc-type.d.ts",
     "test": "ava"
   },
