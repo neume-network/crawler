@@ -1,6 +1,6 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 
-import { Config, NFT } from "../types.js";
+import { Config } from "../types.js";
 
 export async function getIpfsTokenUri(
   uri: string,

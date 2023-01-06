@@ -2,9 +2,9 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import path from "path";
 import { readFile, writeFile } from "fs/promises";
 
-import { Config } from "../types.js";
-import { Strategy } from "../strategies/strategy.types.js";
-import { getUserContracts } from "../utils.js";
+import { Config } from "../src/types.js";
+import { Strategy } from "../src/strategies/strategy.types.js";
+import { getUserContracts } from "../src/utils.js";
 
 export default async function (
   from: number,

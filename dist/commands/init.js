@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { saveLastCrawledBlock } from "../src/state.js";
-import { CONSTANTS } from "../types.js";
+import { CONSTANTS } from "../src/types.js";
 export default async function init() {
     await fs.copyFile(new URL("../.env-copy", import.meta.url), path.resolve(".env"));
     await fs.copyFile(new URL("../config.sample.js", import.meta.url), path.resolve("./config.js"));

@@ -1,7 +1,7 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
 import path from "path";
 import { writeFile } from "fs/promises";
-import { getUserContracts } from "../utils.js";
+import { getUserContracts } from "../src/utils.js";
 export default async function (from, to, recrawl, config, _strategies) {
     if (!config.rpc.length)
         throw new Error("Atleast one RPC host is required");

@@ -2,9 +2,9 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import { toHex } from "eth-fun";
 
 import { db } from "../database/index.js";
-import { JsonRpcLog, NFT, Config, Contracts } from "../types.js";
-import { getAllContracts, randomItem } from "../utils.js";
-import { Strategy } from "../strategies/strategy.types.js";
+import { JsonRpcLog, NFT, Config, Contracts } from "../src/types.js";
+import { getAllContracts, randomItem } from "../src/utils.js";
+import { Strategy } from "../src/strategies/strategy.types.js";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";

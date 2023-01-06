@@ -3,9 +3,9 @@ import ExtractionWorker from "@neume-network/extraction-worker";
 import fs from "fs/promises";
 
 import { db, ReturnValue } from "../database/index.js";
-import { Config, CONSTANTS } from "../types.js";
+import { Config, CONSTANTS } from "../src/types.js";
 import path from "path";
-import { getUserContracts } from "../utils.js";
+import { getUserContracts } from "../src/utils.js";
 
 async function getLastSyncedBlock() {
   const lastId = await db.changeIndex

@@ -3,7 +3,7 @@
  */
 import fs from "fs/promises";
 import path from "path";
-import { CONSTANTS } from "../types.js";
+import { CONSTANTS } from "./types.js";
 export async function getLastCrawledBlock() {
     const location = path.resolve(CONSTANTS.DATA_DIR, CONSTANTS.STATE.LAST_CRAWL);
     const fileExists = await fs

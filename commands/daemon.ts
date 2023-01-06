@@ -1,12 +1,12 @@
 import { fastify as Fastify } from "fastify";
 import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
 
-import { Config } from "../types.js";
+import { Config } from "../src/types.js";
 import {
   getLatestBlockNumber,
   getStrategies,
   getUserContracts,
-} from "../utils.js";
+} from "../src/utils.js";
 import crawl from "./crawl.js";
 import filter_contracts from "./filter_contracts.js";
 import { db } from "../database/index.js";

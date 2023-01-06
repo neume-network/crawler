@@ -2,9 +2,9 @@ import { JSONRPCClient } from "json-rpc-2.0";
 import ExtractionWorker from "@neume-network/extraction-worker";
 import fs from "fs/promises";
 import { db } from "../database/index.js";
-import { CONSTANTS } from "../types.js";
+import { CONSTANTS } from "../src/types.js";
 import path from "path";
-import { getUserContracts } from "../utils.js";
+import { getUserContracts } from "../src/utils.js";
 async function getLastSyncedBlock() {
     const lastId = await db.changeIndex
         .iterator({ reverse: true, limit: 1 })
