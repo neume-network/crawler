@@ -5,6 +5,7 @@ import SoundProtocol from "./strategies/sound_protocol.js";
 import { Strategy } from "./strategies/strategy.types.js";
 import { Contracts, RpcConfig } from "./types.js";
 import Zora from "./strategies/zora.js";
+import CatalogV2 from "./strategies/catalog_v2.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -74,16 +75,13 @@ export async function getAllContracts(): Promise<Contracts> {
 
 /**
  * New strategies should be added here.
- *
- * For development if you wish to run only a few selected strategies
- * then modify this function.
  */
 export function getStrategies(
   strategyNames: string[],
   from: number,
   to: number
 ) {
-  const strategies: Array<typeof Strategy> = [SoundProtocol, Zora];
+  const strategies: Array<typeof Strategy> = [SoundProtocol, Zora, CatalogV2];
 
   return strategies.filter(
     (s) =>

@@ -5,6 +5,7 @@
  */
 
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { Track } from "@neume-network/schema";
 import { anyIpfsToNativeIpfs } from "ipfs-uri-utils";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
@@ -121,6 +122,7 @@ export default class Zora implements Strategy {
           ...datum,
           name: title,
           description,
+          // TODO: add image here
         },
       },
       manifestations: [
@@ -135,7 +137,7 @@ export default class Zora implements Strategy {
           mimetype: "image",
         },
       ],
-    };
+    } as Track;
   }
 
   updateOwner(nft: NFT) {}
