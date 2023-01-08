@@ -6,6 +6,7 @@ import { Strategy } from "./strategies/strategy.types.js";
 import { Contracts, RpcConfig } from "./types.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
+import MintSongsV2 from "./strategies/mintsongs_v2.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -81,7 +82,12 @@ export function getStrategies(
   from: number,
   to: number
 ) {
-  const strategies: Array<typeof Strategy> = [SoundProtocol, Zora, CatalogV2];
+  const strategies: Array<typeof Strategy> = [
+    SoundProtocol,
+    Zora,
+    CatalogV2,
+    MintSongsV2,
+  ];
 
   return strategies.filter(
     (s) =>
