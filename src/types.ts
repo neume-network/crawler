@@ -61,6 +61,8 @@ export type NFT = {
   erc721: {
     blockNumber: number;
     address: string;
+    /** Owner of NFT.erc721.address */
+    contractOwner?: string;
     token: {
       minting: {
         transactionHash: JsonRpcLog["transactionHash"];

@@ -1,5 +1,10 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
-import { decodeLog, toHex } from "eth-fun";
+import {
+  decodeLog,
+  toHex,
+  encodeFunctionSignature,
+  decodeParameters,
+} from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getArweaveTokenUri } from "../components/get-arweave-tokenuri.js";
 import { Config, JsonRpcLog, NFT } from "../types.js";
@@ -113,6 +118,11 @@ export default class SoundProtocol implements Strategy {
       this.config
     );
 
+    nft.erc721.contractOwner = await this.callOwner(
+      nft.erc721.address,
+      nft.erc721.blockNumber
+    );
+
     const datum = nft.erc721.token.uriContent;
 
     return {
@@ -130,8 +140,7 @@ export default class SoundProtocol implements Strategy {
       erc721: {
         version: SoundProtocol.version,
         createdAt: nft.erc721.blockNumber,
-        // TODO: Stop hard coding this value
-        owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
+        owner: nft.erc721.contractOwner,
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,
@@ -158,4 +167,47 @@ export default class SoundProtocol implements Strategy {
   };
 
   updateOwner(nft: NFT) {}
+
+  private callOwner = async (
+    to: string,
+    blockNumber: number
+  ): Promise<string> => {
+    const rpc = randomItem(this.config.rpc);
+    const data = encodeFunctionSignature("owner()");
+    const msg = await this.worker({
+      type: "json-rpc",
+      commissioner: "",
+      version: "0.0.1",
+      method: "eth_call",
+      options: {
+        url: rpc.url,
+        retry: {
+          retries: 3,
+        },
+      },
+      params: [
+        {
+          to,
+          data,
+        },
+        toHex(blockNumber),
+      ],
+    });
+
+    if (msg.error)
+      throw new Error(
+        `Error while calling owner on contract: ${to} ${JSON.stringify(
+          msg,
+          null,
+          2
+        )}`
+      );
+
+    const owner = decodeParameters(["address"], msg.results)[0];
+
+    if (typeof owner !== "string")
+      throw new Error(`typeof owner invalid ${JSON.stringify(msg, null, 2)}`);
+
+    return owner;
+  };
 }
