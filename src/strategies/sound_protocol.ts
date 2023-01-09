@@ -118,7 +118,7 @@ export default class SoundProtocol implements Strategy {
       this.config
     );
 
-    nft.erc721.contractOwner = await this.callOwner(
+    nft.creator = await this.callOwner(
       nft.erc721.address,
       nft.erc721.blockNumber
     );
@@ -140,7 +140,7 @@ export default class SoundProtocol implements Strategy {
       erc721: {
         version: SoundProtocol.version,
         createdAt: nft.erc721.blockNumber,
-        owner: nft.erc721.contractOwner,
+        owner: nft.creator,
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,

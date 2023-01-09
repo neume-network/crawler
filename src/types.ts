@@ -58,11 +58,10 @@ export type Contracts = Record<string, Omit<Contract, "address">>;
 
 export type NFT = {
   platform: Omit<Contract, "address">;
+  creator?: string;
   erc721: {
     blockNumber: number;
     address: string;
-    /** Owner of NFT.erc721.address */
-    contractOwner?: string;
     token: {
       minting: {
         transactionHash: JsonRpcLog["transactionHash"];
