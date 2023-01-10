@@ -131,6 +131,7 @@ export default class SoundProtocol implements Strategy {
       artist: {
         version: SoundProtocol.version,
         name: datum.artist,
+        address: nft.creator,
       },
       platform: {
         version: SoundProtocol.version,
@@ -140,7 +141,8 @@ export default class SoundProtocol implements Strategy {
       erc721: {
         version: SoundProtocol.version,
         createdAt: nft.erc721.blockNumber,
-        owner: nft.creator,
+        // TODO: Stop hard coding this value
+        owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,

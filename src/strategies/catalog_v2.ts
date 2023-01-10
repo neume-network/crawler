@@ -59,6 +59,7 @@ export default class CatalogV2 implements Strategy {
       artist: {
         version: CatalogV2.version,
         name: datum.artist,
+        address: nft.creator,
       },
       platform: {
         version: CatalogV2.version,
@@ -66,7 +67,8 @@ export default class CatalogV2 implements Strategy {
         uri: "https://catalog.works",
       },
       erc721: {
-        owner: nft.creator,
+        // TODO: Stop hard coding this value
+        owner: "0x489e043540ff11ec22226ca0a6f6f8e3040c7b5a",
         version: CatalogV2.version,
         createdAt: nft.erc721.blockNumber,
         tokenId: nft.erc721.token.id,
