@@ -17,12 +17,14 @@ const rpcHosts = [
 ];
 
 /**
- * A list of strategies to enable.
+ * A list of strategies to enable. Remove entries from the list to run
+ * selected strategies.
  * 
- * The name should match the class name of the strategy.
- * The name is case-sensitive.
+ * Note:
+ * - The name should match the class name of the strategy.
+ * - The name is case-sensitive.
  * */
-export const strategies = ["SoundProtocol"];
+export const strategies = ["SoundProtocol", "MintSongsV2", "CatalogV2", "Zora"];
 
 
 /**

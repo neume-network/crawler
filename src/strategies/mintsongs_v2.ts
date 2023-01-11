@@ -9,14 +9,17 @@
  */
 
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
 import { Config, NFT } from "../types.js";
+import { randomItem } from "../utils.js";
 import { Strategy } from "./strategy.types.js";
 
 export default class MintSongsV2 implements Strategy {
   public static version = "2.0.0";
-  public static createdAtBlock = 0;
+  // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
+  public static createdAtBlock = 14799837;
   public static deprecatedAtBlock = null;
   private worker: ExtractionWorkerHandler;
   private config: Config;
@@ -38,6 +41,11 @@ export default class MintSongsV2 implements Strategy {
       this.worker,
       this.config
     );
+    nft.creator = await this.callTokenCreator(
+      nft.erc721.address,
+      nft.erc721.blockNumber,
+      nft.erc721.token.id
+    );
 
     const datum = nft.erc721.token.uriContent;
 
@@ -55,6 +63,7 @@ export default class MintSongsV2 implements Strategy {
       artist: {
         version: MintSongsV2.version,
         name: datum.artist,
+        address: nft.creator,
       },
       platform: {
         version: MintSongsV2.version,
@@ -92,4 +101,60 @@ export default class MintSongsV2 implements Strategy {
   };
 
   updateOwner(nft: NFT) {}
+
+  private callTokenCreator = async (
+    to: string,
+    blockNumber: number,
+    tokenId: string
+  ): Promise<string> => {
+    const rpc = randomItem(this.config.rpc);
+    const data = encodeFunctionCall(
+      {
+        name: "tokenCreator",
+        type: "function",
+        inputs: [
+          {
+            type: "uint256",
+            name: "<input>",
+          },
+        ],
+      },
+      [tokenId]
+    );
+    const msg = await this.worker({
+      type: "json-rpc",
+      commissioner: "",
+      version: "0.0.1",
+      method: "eth_call",
+      options: {
+        url: rpc.url,
+        retry: {
+          retries: 3,
+        },
+      },
+      params: [
+        {
+          to,
+          data,
+        },
+        toHex(blockNumber),
+      ],
+    });
+
+    if (msg.error)
+      throw new Error(
+        `Error while calling owner on contract: ${to} ${JSON.stringify(
+          msg,
+          null,
+          2
+        )}`
+      );
+
+    const creator = decodeParameters(["address"], msg.results)[0];
+
+    if (typeof creator !== "string")
+      throw new Error(`typeof owner invalid ${JSON.stringify(msg, null, 2)}`);
+
+    return creator;
+  };
 }
