@@ -6,10 +6,12 @@
 
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { Track } from "@neume-network/schema";
+import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { anyIpfsToNativeIpfs } from "ipfs-uri-utils";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
 import { NFT, Config } from "../types.js";
+import { randomItem } from "../utils.js";
 
 import { Strategy } from "./strategy.types.js";
 
@@ -85,6 +87,12 @@ export default class Zora implements Strategy {
       return null;
     }
 
+    nft.creator = await this.callTokenCreator(
+      nft.erc721.address,
+      nft.erc721.blockNumber,
+      nft.erc721.token.id
+    );
+
     const datum = nft.metadata.uriContent;
 
     const title = datum?.body?.title || datum?.name;
@@ -105,6 +113,7 @@ export default class Zora implements Strategy {
       artist: {
         version: Zora.version,
         name: artist,
+        address: nft.creator,
       },
       platform: {
         version: Zora.version,
@@ -141,4 +150,60 @@ export default class Zora implements Strategy {
   }
 
   updateOwner(nft: NFT) {}
+
+  private callTokenCreator = async (
+    to: string,
+    blockNumber: number,
+    tokenId: string
+  ): Promise<string> => {
+    const rpc = randomItem(this.config.rpc);
+    const data = encodeFunctionCall(
+      {
+        name: "tokenCreators",
+        type: "function",
+        inputs: [
+          {
+            type: "uint256",
+            name: "<input>",
+          },
+        ],
+      },
+      [tokenId]
+    );
+    const msg = await this.worker({
+      type: "json-rpc",
+      commissioner: "",
+      version: "0.0.1",
+      method: "eth_call",
+      options: {
+        url: rpc.url,
+        retry: {
+          retries: 3,
+        },
+      },
+      params: [
+        {
+          to,
+          data,
+        },
+        toHex(blockNumber),
+      ],
+    });
+
+    if (msg.error)
+      throw new Error(
+        `Error while calling owner on contract: ${to} ${JSON.stringify(
+          msg,
+          null,
+          2
+        )}`
+      );
+
+    const creator = decodeParameters(["address"], msg.results)[0];
+
+    if (typeof creator !== "string")
+      throw new Error(`typeof owner invalid ${JSON.stringify(msg, null, 2)}`);
+
+    return creator;
+  };
 }
