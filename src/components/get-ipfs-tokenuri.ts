@@ -23,10 +23,13 @@ export async function getIpfsTokenUri(
     },
   });
 
-  if (msg.error)
+  if (msg.error) {
     throw new Error(
-      `Error while fetching IPFS URI: ${JSON.stringify(msg, null, 2)}`
+      `Error while fetching IPFS URI: ${JSON.stringify(
+        msg.error
+      )} \n${JSON.stringify(msg, null, 2)}`
     );
+  }
 
   const content = msg.results;
 

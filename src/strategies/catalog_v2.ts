@@ -31,11 +31,23 @@ export default class CatalogV2 implements Strategy {
       nft.erc721.blockNumber,
       nft
     );
-    nft.erc721.token.uriContent = await getIpfsTokenUri(
-      nft.erc721.token.uri,
-      this.worker,
-      this.config
-    );
+
+    try {
+      nft.erc721.token.uriContent = await getIpfsTokenUri(
+        nft.erc721.token.uri,
+        this.worker,
+        this.config
+      );
+    } catch (err: any) {
+      if (err.message.includes("Invalid CID")) {
+        console.warn(
+          "Invalid CID: Ignoring the given track.",
+          JSON.stringify(nft, null, 2)
+        );
+        return null;
+      }
+      throw err;
+    }
 
     nft.creator = await this.callCreator(
       nft.erc721.address,

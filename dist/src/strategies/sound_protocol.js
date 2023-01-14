@@ -1,4 +1,4 @@
-import { decodeLog, toHex } from "eth-fun";
+import { decodeLog, toHex, encodeFunctionSignature, decodeParameters, } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getArweaveTokenUri } from "../components/get-arweave-tokenuri.js";
 import { randomItem } from "../utils.js";
@@ -61,6 +61,7 @@ export default class SoundProtocol {
             }
             nft.erc721.token.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
             nft.erc721.token.uriContent = await getArweaveTokenUri(nft.erc721.token.uri, this.worker, this.config);
+            nft.creator = await this.callOwner(nft.erc721.address, nft.erc721.blockNumber);
             const datum = nft.erc721.token.uriContent;
             return {
                 version: SoundProtocol.version,
@@ -68,6 +69,7 @@ export default class SoundProtocol {
                 artist: {
                     version: SoundProtocol.version,
                     name: datum.artist,
+                    address: nft.creator,
                 },
                 platform: {
                     version: SoundProtocol.version,
@@ -102,6 +104,35 @@ export default class SoundProtocol {
                     },
                 ],
             };
+        };
+        this.callOwner = async (to, blockNumber) => {
+            const rpc = randomItem(this.config.rpc);
+            const data = encodeFunctionSignature("owner()");
+            const msg = await this.worker({
+                type: "json-rpc",
+                commissioner: "",
+                version: "0.0.1",
+                method: "eth_call",
+                options: {
+                    url: rpc.url,
+                    retry: {
+                        retries: 3,
+                    },
+                },
+                params: [
+                    {
+                        to,
+                        data,
+                    },
+                    toHex(blockNumber),
+                ],
+            });
+            if (msg.error)
+                throw new Error(`Error while calling owner on contract: ${to} ${JSON.stringify(msg, null, 2)}`);
+            const owner = decodeParameters(["address"], msg.results)[0];
+            if (typeof owner !== "string")
+                throw new Error(`typeof owner invalid ${JSON.stringify(msg, null, 2)}`);
+            return owner;
         };
         this.worker = worker;
         this.config = config;

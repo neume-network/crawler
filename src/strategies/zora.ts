@@ -76,11 +76,22 @@ export default class Zora implements Strategy {
       return null;
     }
 
-    nft.metadata.uriContent = await getIpfsTokenUri(
-      nft.metadata.uri,
-      this.worker,
-      this.config
-    );
+    try {
+      nft.metadata.uriContent = await getIpfsTokenUri(
+        nft.metadata.uri,
+        this.worker,
+        this.config
+      );
+    } catch (err: any) {
+      if (err.message.includes("Invalid CID")) {
+        console.warn(
+          "Invalid CID: Ignoring the given track.",
+          JSON.stringify(nft, null, 2)
+        );
+        return null;
+      }
+      throw err;
+    }
 
     // Assumption that is specific to Catalog
     if (!nft.metadata.uriContent?.body?.version?.includes("catalog")) {

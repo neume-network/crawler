@@ -3,11 +3,51 @@
  * Since, Zora is a marketplace we will find non-music NFTs which
  * we will have to filter.
  */
+import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { anyIpfsToNativeIpfs } from "ipfs-uri-utils";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
+import { randomItem } from "../utils.js";
 export default class Zora {
     constructor(worker, config) {
+        this.callTokenCreator = async (to, blockNumber, tokenId) => {
+            const rpc = randomItem(this.config.rpc);
+            const data = encodeFunctionCall({
+                name: "tokenCreators",
+                type: "function",
+                inputs: [
+                    {
+                        type: "uint256",
+                        name: "<input>",
+                    },
+                ],
+            }, [tokenId]);
+            const msg = await this.worker({
+                type: "json-rpc",
+                commissioner: "",
+                version: "0.0.1",
+                method: "eth_call",
+                options: {
+                    url: rpc.url,
+                    retry: {
+                        retries: 3,
+                    },
+                },
+                params: [
+                    {
+                        to,
+                        data,
+                    },
+                    toHex(blockNumber),
+                ],
+            });
+            if (msg.error)
+                throw new Error(`Error while calling owner on contract: ${to} ${JSON.stringify(msg, null, 2)}`);
+            const creator = decodeParameters(["address"], msg.results)[0];
+            if (typeof creator !== "string")
+                throw new Error(`typeof owner invalid ${JSON.stringify(msg, null, 2)}`);
+            return creator;
+        };
         this.worker = worker;
         this.config = config;
     }
@@ -37,11 +77,21 @@ export default class Zora {
             console.warn("Invalid tokenURI: Couldn't convert to IPFS URI. Ignoring the given track.", JSON.stringify(nft, null, 2));
             return null;
         }
-        nft.metadata.uriContent = await getIpfsTokenUri(nft.metadata.uri, this.worker, this.config);
+        try {
+            nft.metadata.uriContent = await getIpfsTokenUri(nft.metadata.uri, this.worker, this.config);
+        }
+        catch (err) {
+            if (err.message.includes("Invalid CID")) {
+                console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
+                return null;
+            }
+            throw err;
+        }
         // Assumption that is specific to Catalog
         if (!nft.metadata.uriContent?.body?.version?.includes("catalog")) {
             return null;
         }
+        nft.creator = await this.callTokenCreator(nft.erc721.address, nft.erc721.blockNumber, nft.erc721.token.id);
         const datum = nft.metadata.uriContent;
         const title = datum?.body?.title || datum?.name;
         const artist = datum?.body?.artist;
@@ -58,6 +108,7 @@ export default class Zora {
             artist: {
                 version: Zora.version,
                 name: artist,
+                address: nft.creator,
             },
             platform: {
                 version: Zora.version,
@@ -75,6 +126,7 @@ export default class Zora {
                     ...datum,
                     name: title,
                     description,
+                    // TODO: add image here
                 },
             },
             manifestations: [

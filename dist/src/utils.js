@@ -3,6 +3,8 @@ import path from "path";
 import https from "https";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
+import CatalogV2 from "./strategies/catalog_v2.js";
+import MintSongsV2 from "./strategies/mintsongs_v2.js";
 export function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -54,12 +56,14 @@ export async function getAllContracts() {
 }
 /**
  * New strategies should be added here.
- *
- * For development if you wish to run only a few selected strategies
- * then modify this function.
  */
 export function getStrategies(strategyNames, from, to) {
-    const strategies = [SoundProtocol, Zora];
+    const strategies = [
+        SoundProtocol,
+        Zora,
+        CatalogV2,
+        MintSongsV2,
+    ];
     return strategies.filter((s) => s.createdAtBlock <= from &&
         to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
         strategyNames.includes(s.name));

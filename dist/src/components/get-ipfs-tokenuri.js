@@ -13,8 +13,9 @@ export async function getIpfsTokenUri(uri, worker, config) {
             },
         },
     });
-    if (msg.error)
-        throw new Error(`Error while fetching IPFS URI: ${JSON.stringify(msg, null, 2)}`);
+    if (msg.error) {
+        throw new Error(`Error while fetching IPFS URI: ${JSON.stringify(msg.error)} \n${JSON.stringify(msg, null, 2)}`);
+    }
     const content = msg.results;
     if (!content)
         throw new Error(`tokenURI content shouldn't be empty`);
