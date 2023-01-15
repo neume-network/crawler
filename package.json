@@ -24,7 +24,7 @@
     "dotenv": "^16.0.3",
     "eth-fun": "^0.9.2",
     "fastify": "^4.10.2",
-    "ipfs-uri-utils": "^1.0.0",
+    "ipfs-uri-utils": "^1.0.1",
     "json-canonicalize": "^1.0.4",
     "json-rpc-2.0": "^1.4.2",
     "json-schema-to-typescript": "^11.0.2",
