@@ -19,6 +19,10 @@ export default class CatalogV2 {
                     console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
                     return null;
                 }
+                if (err.message.includes("504") || err.message.includes("AbortError")) {
+                    console.warn("Couldn't find CID on the IPFS network: Ignoring NFT", JSON.stringify(nft, null, 2));
+                    return null;
+                }
                 throw err;
             }
             nft.creator = await this.callCreator(nft.erc721.address, nft.erc721.blockNumber, nft.erc721.token.id);

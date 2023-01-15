@@ -21,9 +21,6 @@ export default class Zora implements Strategy {
   // Last song on Zora contract: https://beta.catalog.works/lucalush/velvet-girls
   // https://cloud.hasura.io/public/graphiql?endpoint=https%3A%2F%2Fcatalog-prod.hasura.app%2Fv1%2Fgraphql&query=query+MyQuery+%7B%0A++tracks%28%0A++++where%3A+%7Bcontract_address%3A+%7B_iregex%3A+%220xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7%22%7D%7D%0A++++order_by%3A+%7Bcreated_at%3A+desc%7D%0A++%29+%7B%0A++++created_at%0A++++contract_address%0A++++short_url%0A++++title%0A++++nft_id%0A++%7D%0A%7D%0A
   public static deprecatedAtBlock = null;
-  public static invalidIDs = [
-    /^0xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7\/3935$/ // IPFS content is not available anymore
-  ]
   private worker: ExtractionWorkerHandler;
   private config: Config;
 
@@ -33,17 +30,6 @@ export default class Zora implements Strategy {
   }
 
   async crawl(nft: NFT) {
-    if (
-      Zora.invalidIDs.filter((id) =>
-        `${nft.erc721.address}/${nft.erc721.token.id}`.match(id)
-      ).length != 0
-    ) {
-      console.log(
-        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`
-      );
-      return null;
-    }
-
     nft.erc721.token.uri = await callTokenUri(
       this.worker,
       this.config,
@@ -102,6 +88,13 @@ export default class Zora implements Strategy {
           "Invalid CID: Ignoring the given track.",
           JSON.stringify(nft, null, 2)
         );
+        return null;
+      }
+      if (err.message.includes("504") || err.message.includes("AbortError")) {
+        console.warn(
+          "Couldn't find CID on the IPFS network: Ignoring NFT",
+          JSON.stringify(nft, null, 2)
+        )
         return null;
       }
       throw err;

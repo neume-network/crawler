@@ -46,6 +46,13 @@ export default class CatalogV2 implements Strategy {
         );
         return null;
       }
+      if (err.message.includes("504") || err.message.includes("AbortError")) {
+        console.warn(
+          "Couldn't find CID on the IPFS network: Ignoring NFT",
+          JSON.stringify(nft, null, 2)
+        )
+        return null;
+      }
       throw err;
     }
 
