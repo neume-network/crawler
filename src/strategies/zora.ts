@@ -94,7 +94,7 @@ export default class Zora implements Strategy {
         console.warn(
           "Couldn't find CID on the IPFS network: Ignoring NFT",
           JSON.stringify(nft, null, 2)
-        )
+        );
         return null;
       }
       throw err;

@@ -57,10 +57,10 @@ export async function callTokenUri(
   if (ret.error)
     throw new Error(
       `Error while calling tokenURI on contract: ${JSON.stringify(
-        msg,
+        ret,
         null,
         2
-      )} \n${JSON.stringify(nft, null, 2)}`
+      )}`
     );
 
   const uri = decodeParameters(["string"], ret.results)[0];

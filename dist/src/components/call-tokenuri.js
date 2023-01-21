@@ -42,7 +42,7 @@ export async function callTokenUri(worker, config, blockNumber, nft, overrideSig
     };
     const ret = await worker(msg);
     if (ret.error)
-        throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(msg, null, 2)} \n${JSON.stringify(nft, null, 2)}`);
+        throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(ret, null, 2)}`);
     const uri = decodeParameters(["string"], ret.results)[0];
     if (!uri)
         throw new Error(`tokenURI shouldn't be empty ${JSON.stringify(nft, null, 2)}`);
