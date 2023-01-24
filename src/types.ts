@@ -1,5 +1,8 @@
 // All common types are declared here
-import { Config as ExtractionWorkerConfig } from "@neume-network/schema";
+import {
+  Config as ExtractionWorkerConfig,
+  Transaction,
+} from "@neume-network/schema";
 
 export const CONSTANTS = {
   DATA_DIR: "data",
@@ -62,10 +65,8 @@ export type NFT = {
   erc721: {
     blockNumber: number;
     address: string;
+    transaction: Transaction;
     token: {
-      minting: {
-        transactionHash: JsonRpcLog["transactionHash"];
-      };
       id: string;
       uri?: string;
       uriContent?: Record<any, any>;

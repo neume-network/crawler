@@ -55,17 +55,30 @@ export class DB {
     async getOne(datum) {
         const { chainId, address, tokenId, blockNumber } = datum;
         if (chainId && address && tokenId && blockNumber) {
-            const id = `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`;
-            return { id: this.keyToDatum(id), value: await this.level.get(id) };
+            for await (const [id, value] of this.level.iterator({
+                gte: `${datum.chainId}/${datum.address}/${datum.tokenId}/`,
+                lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`,
+                reverse: true,
+                limit: 1,
+            })) {
+                return { id: this.keyToDatum(id), value };
+            }
+            const error = new Error(`Level not found for ${JSON.stringify(datum)}`);
+            error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
+            throw error;
         }
         else if (chainId && address && tokenId) {
             for await (const [id, value] of this.level.iterator({
+                gte: `${datum.chainId}/${datum.address}/${datum.tokenId}/`,
                 lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/~`,
                 reverse: true,
                 limit: 1,
             })) {
                 return { id: this.keyToDatum(id), value };
             }
+            const error = new Error(`Level not found for ${JSON.stringify(datum)}`);
+            error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
+            throw error;
         }
         throw new Error(`Insufficient parametrs provided to DB.getOne function ${JSON.stringify(datum)}`);
     }

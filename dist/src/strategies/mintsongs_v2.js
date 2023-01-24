@@ -50,8 +50,12 @@ export default class MintSongsV2 {
                     uri: "https://www.mintsongs.com/",
                 },
                 erc721: {
-                    // TODO: Remove hardcoded owner value
-                    owner: "0x681452d95caef97a88d25a452dc1bc2b62d7f134",
+                    transaction: {
+                        from: nft.erc721.transaction.from,
+                        to: nft.erc721.transaction.to,
+                        blockNumber: nft.erc721.transaction.blockNumber,
+                        transactionHash: nft.erc721.transaction.transactionHash,
+                    },
                     version: MintSongsV2.version,
                     createdAt: nft.erc721.blockNumber,
                     tokenId: nft.erc721.token.id,

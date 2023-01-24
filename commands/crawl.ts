@@ -1,10 +1,11 @@
 import ExtractionWorker from "@neume-network/extraction-worker";
-import { toHex } from "eth-fun";
+import { toHex, decodeLog } from "eth-fun";
 
 import { db } from "../database/index.js";
 import { JsonRpcLog, NFT, Config, Contracts } from "../src/types.js";
 import { getAllContracts, randomItem } from "../src/utils.js";
 import { Strategy } from "../src/strategies/strategy.types.js";
+import { Track, Transaction } from "@neume-network/schema";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -80,31 +81,7 @@ export default async function (
 
       await Promise.all(
         logs.map(async (log) => {
-          if (!log.blockNumber) {
-            console.log(`log.blockNumber not found for ${msg}`);
-            return;
-          }
-          if (!log.topics[3]) {
-            console.log(`log.topics[3] should not be undefined`);
-            return;
-          }
-
-          const nft: NFT = {
-            platform: {
-              ...contracts[log.address],
-            },
-            erc721: {
-              blockNumber: parseInt(log.blockNumber, 16),
-              address: log.address,
-              token: {
-                minting: {
-                  transactionHash: log.transactionHash,
-                },
-                id: BigInt(log.topics[3]).toString(10),
-              },
-            },
-            metadata: {},
-          };
+          const nft = prepareNFT(contracts, log);
 
           let nftExists = false;
 
@@ -158,13 +135,64 @@ export default async function (
               console.log(
                 "Found track:",
                 track?.title,
+                track?.platform.version,
                 track?.platform.name,
                 "at",
                 track?.erc721.createdAt
               );
             }
           } else {
-            strategy?.updateOwner(nft);
+            let track: Track | undefined = undefined;
+
+            try {
+              // Get the last track
+              track = (
+                await db.getOne({
+                  chainId: CHAIN_ID,
+                  address: nft.erc721.address,
+                  tokenId: nft.erc721.token.id,
+                  blockNumber: (nft.erc721.blockNumber - 1).toString(),
+                })
+              ).value;
+            } catch (err: any) {
+              if (err.code !== "LEVEL_NOT_FOUND") throw err;
+            }
+
+            // If the NFT hasn't been crawled before we can't update its owner
+            if (track) {
+              track.erc721.transaction = {
+                from: nft.erc721.transaction.from,
+                to: nft.erc721.transaction.to,
+                blockNumber: nft.erc721.transaction.blockNumber,
+                transactionHash: nft.erc721.transaction.transactionHash,
+              };
+
+              // If in future we have to update strategy specific
+              // ownership data we can updateOwner function
+
+              await db.insert(
+                {
+                  chainId: CHAIN_ID,
+                  address: nft.erc721.address,
+                  tokenId: nft.erc721.token.id,
+                  blockNumber: nft.erc721.blockNumber.toString(),
+                },
+                track
+              );
+
+              console.log(
+                "Update ownership of",
+                track.title,
+                track?.platform.name,
+                track?.platform.version,
+                "at",
+                nft.erc721.blockNumber,
+                "from",
+                nft.erc721.transaction.from,
+                "to",
+                nft.erc721.transaction.to
+              );
+            }
           }
         })
       );
@@ -172,4 +200,42 @@ export default async function (
   }
 
   console.log("Exiting from crawl command");
+}
+
+function prepareNFT(contracts: Contracts, log: JsonRpcLog): NFT {
+  if (!log.topics[3] || !log.transactionHash || !log.blockNumber) {
+    throw new Error(
+      `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`
+    );
+  }
+
+  const decodedTopics = decodeLog(
+    [
+      { indexed: true, name: "from", type: "address" },
+      { indexed: true, name: "to", type: "address" },
+      { indexed: true, name: "tokenId", type: "uint256" },
+    ],
+    log.data,
+    log.topics.slice(1)
+  );
+
+  return {
+    platform: {
+      ...contracts[log.address],
+    },
+    erc721: {
+      blockNumber: parseInt(log.blockNumber, 16),
+      address: log.address,
+      transaction: {
+        from: decodedTopics[0],
+        to: decodedTopics[1],
+        transactionHash: log.transactionHash,
+        blockNumber: parseInt(log.blockNumber, 16),
+      },
+      token: {
+        id: BigInt(log.topics[3]).toString(10),
+      },
+    },
+    metadata: {},
+  };
 }

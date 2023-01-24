@@ -141,7 +141,12 @@ export default class Zora implements Strategy {
       erc721: {
         version: Zora.version,
         createdAt: nft.erc721.blockNumber,
-        owner: "0xhardcode",
+        transaction: {
+          from: nft.erc721.transaction.from,
+          to: nft.erc721.transaction.to,
+          blockNumber: nft.erc721.transaction.blockNumber,
+          transactionHash: nft.erc721.transaction.transactionHash,
+        },
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,

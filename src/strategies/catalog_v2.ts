@@ -24,7 +24,6 @@ export default class CatalogV2 implements Strategy {
   }
 
   crawl = async (nft: NFT) => {
-    console.log("crawling catalog");
     nft.erc721.token.uri = await callTokenUri(
       this.worker,
       this.config,
@@ -50,7 +49,7 @@ export default class CatalogV2 implements Strategy {
         console.warn(
           "Couldn't find CID on the IPFS network: Ignoring NFT",
           JSON.stringify(nft, null, 2)
-        )
+        );
         return null;
       }
       throw err;
@@ -86,8 +85,12 @@ export default class CatalogV2 implements Strategy {
         uri: "https://catalog.works",
       },
       erc721: {
-        // TODO: Stop hard coding this value
-        owner: "0x489e043540ff11ec22226ca0a6f6f8e3040c7b5a",
+        transaction: {
+          from: nft.erc721.transaction.from,
+          to: nft.erc721.transaction.to,
+          blockNumber: nft.erc721.transaction.blockNumber,
+          transactionHash: nft.erc721.transaction.transactionHash,
+        },
         version: CatalogV2.version,
         createdAt: nft.erc721.blockNumber,
         tokenId: nft.erc721.token.id,

@@ -19,6 +19,12 @@ test.serial("should be able to get values by id", async (t) => {
     t.deepEqual(ret.value, value);
     t.deepEqual(ids, [db.datumToKey(datum)]);
 });
+test.serial("should throw error if no value with given address and token id", async (t) => {
+    await db.insert({ chainId, address: "0x9b", tokenId: "2", blockNumber: "110" }, { test: "data" });
+    await t.throwsAsync(async () => db.getOne({ chainId, address: "0xab", tokenId: "0" }), {
+        code: "LEVEL_NOT_FOUND",
+    });
+});
 test.serial("should get value at latest block number if no block number is specified", async (t) => {
     const values = [
         {
