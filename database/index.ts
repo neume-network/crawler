@@ -1,5 +1,6 @@
 import path from "path";
 import { Level } from "level";
+import { Track } from "@neume-network/schema";
 
 export type Datum = {
   chainId: string;
@@ -10,20 +11,17 @@ export type Datum = {
 
 export type ReturnValue = {
   id: Datum;
-  value: Record<string, any>;
+  value: Track;
 };
 
 export class DB {
-  level: Level<string, Record<string, any> | string[]>;
+  level: Level<string, Track>;
   changeIndex: Level<string, string>;
 
   constructor(dbPath: string) {
-    this.level = new Level<string, Record<string, any> | string[]>(
-      path.resolve(dbPath, "./tracks"),
-      {
-        valueEncoding: "json",
-      }
-    );
+    this.level = new Level<string, Track>(path.resolve(dbPath, "./tracks"), {
+      valueEncoding: "json",
+    });
     this.changeIndex = new Level(path.resolve(dbPath, "./changes"), {
       valueEncoding: "json",
     });
@@ -92,16 +90,34 @@ export class DB {
     const { chainId, address, tokenId, blockNumber } = datum;
 
     if (chainId && address && tokenId && blockNumber) {
-      const id = `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`;
-      return { id: this.keyToDatum(id), value: await this.level.get(id) };
+      for await (const [id, value] of this.level.iterator({
+        gte: `${datum.chainId}/${datum.address}/${datum.tokenId}/`,
+        lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`,
+        reverse: true,
+        limit: 1,
+      })) {
+        return { id: this.keyToDatum(id), value };
+      }
+      const error: any = new Error(
+        `Level not found for ${JSON.stringify(datum)}`
+      );
+      error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
+      throw error;
     } else if (chainId && address && tokenId) {
       for await (const [id, value] of this.level.iterator({
+        gte: `${datum.chainId}/${datum.address}/${datum.tokenId}/`,
         lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/~`,
         reverse: true,
         limit: 1,
       })) {
         return { id: this.keyToDatum(id), value };
       }
+
+      const error: any = new Error(
+        `Level not found for ${JSON.stringify(datum)}`
+      );
+      error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
+      throw error;
     }
 
     throw new Error(
