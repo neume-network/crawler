@@ -5,6 +5,7 @@ import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
 import MintSongsV2 from "./strategies/mintsongs_v2.js";
+import Noizd from "./strategies/noizd.js";
 export function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -63,6 +64,7 @@ export function getStrategies(strategyNames, from, to) {
         Zora,
         CatalogV2,
         MintSongsV2,
+        Noizd
     ];
     return strategies.filter((s) => s.createdAtBlock <= from &&
         to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&

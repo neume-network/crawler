@@ -1,12 +1,15 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import https from "https";
-import SoundProtocol from "./strategies/sound_protocol.js";
+
 import { Strategy } from "./strategies/strategy.types.js";
 import { Contracts, RpcConfig } from "./types.js";
+
+import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
 import MintSongsV2 from "./strategies/mintsongs_v2.js";
+import Noizd from "./strategies/noizd.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -87,6 +90,8 @@ export function getStrategies(
     Zora,
     CatalogV2,
     MintSongsV2,
+    Noizd
+
   ];
 
   return strategies.filter(

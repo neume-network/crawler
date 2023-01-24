@@ -6,6 +6,7 @@ data
 *.env
 **/config.js
 contracts.json
+.DS_Store
 
-# TODO: Add dist folder here. Since we are using the package through 
+# TODO: Add dist folder here. Since we are using the package through
 # GitHub we have to commit dist.
