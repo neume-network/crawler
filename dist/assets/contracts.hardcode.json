@@ -10,5 +10,9 @@
   "0x2b5426a5b98a3e366230eba9f95a24f09ae4a584": {
     "name": "MintSongsV2",
     "version": "2.0.0"
+  },
+  "0xf5819e27b9bad9f97c177bf007c1f96f26d91ca6": {
+    "name": "Noizd",
+    "version": "1.0.0"
   }
 }
