@@ -27,7 +27,6 @@ export default class SoundProtocol implements Strategy {
     const editionCreatedSelector =
       "0x405098db99342b699216d8150e930dbbf2f686f5a43485aed1e69219dafd4935";
 
-    console.log(123123123);
     const rpcHost = randomItem(this.config.rpc);
     const options = {
       url: rpcHost.url,
