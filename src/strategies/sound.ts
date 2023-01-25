@@ -1,12 +1,12 @@
-import { ExtractionWorkerHandler } from '@neume-network/extraction-worker';
-import { decodeLog, toHex } from 'eth-fun';
-import { callTokenUri } from '../components/call-tokenuri.js';
-import { fetchTokenUri } from '../components/fetch-tokenuri.js';
-import { callOwner } from '../components/call-owner.js';
+import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { decodeLog, toHex } from "eth-fun";
+import { callTokenUri } from "../components/call-tokenuri.js";
+import { fetchTokenUri } from "../components/fetch-tokenuri.js";
+import { callOwner } from "../components/call-owner.js";
 
-import { Config, JsonRpcLog, NFT } from '../types.js';
-import { Strategy } from './strategy.types.js';
-import { randomItem, ifIpfsConvertToNativeIpfs } from '../utils.js';
+import { Config, JsonRpcLog, NFT } from "../types.js";
+import { Strategy } from "./strategy.types.js";
+import { randomItem, ifIpfsConvertToNativeIpfs } from "../utils.js";
 
 // Instead of querying at the block number soundxyz NFT
 // was minted, we query at a higher block number because
@@ -17,7 +17,7 @@ import { randomItem, ifIpfsConvertToNativeIpfs } from '../utils.js';
 // workingAfterBlockNumber  15050010
 
 export default class Sound implements Strategy {
-  public static version = '1.0.0';
+  public static version = "1.0.0";
   public static createdAtBlock = 15050010;
   public static deprecatedAtBlock = null;
   public static invalidIDs = [];
@@ -32,7 +32,7 @@ export default class Sound implements Strategy {
 
   filterContracts = async (from: number, to: number) => {
     const artistCreatedSelector =
-      '0x23748b43b77f98380e738976c6324996908ffc1989994dd3c68631c87a65a7c0';
+      "0x23748b43b77f98380e738976c6324996908ffc1989994dd3c68631c87a65a7c0";
 
     const rpcHost = randomItem(this.config.rpc);
     const options = {
@@ -49,8 +49,8 @@ export default class Sound implements Strategy {
     const toBlock = toHex(to);
 
     const message = await this.worker({
-      type: 'json-rpc',
-      method: 'eth_getLogs',
+      type: "json-rpc",
+      method: "eth_getLogs",
       commissioner: Sound.name,
       params: [
         {
@@ -59,7 +59,7 @@ export default class Sound implements Strategy {
           topics: [[artistCreatedSelector]],
         },
       ],
-      version: '0.0.1',
+      version: "0.0.1",
       options,
     });
 
@@ -81,20 +81,20 @@ export default class Sound implements Strategy {
       const result = decodeLog(
         [
           {
-            type: 'uint256',
-            name: 'artistId',
+            type: "uint256",
+            name: "artistId",
           },
           {
-            type: 'string',
-            name: 'name',
+            type: "string",
+            name: "name",
           },
           {
-            type: 'string',
-            name: 'symbol',
+            type: "string",
+            name: "symbol",
           },
           {
-            type: 'address',
-            name: 'artistAddress',
+            type: "address",
+            name: "artistAddress",
             indexed: true,
           },
         ],
@@ -140,8 +140,6 @@ export default class Sound implements Strategy {
       nft.erc721.blockNumber,
     );
 
-    console.log('nft', nft);
-
     const datum = nft.erc721.token.uriContent;
 
     let duration;
@@ -159,14 +157,14 @@ export default class Sound implements Strategy {
       },
       platform: {
         version: Sound.version,
-        name: 'Sound',
-        uri: 'https://sound.xyz',
+        name: "Sound",
+        uri: "https://sound.xyz",
       },
       erc721: {
         version: Sound.version,
         createdAt: nft.erc721.blockNumber,
         // TODO: Stop hard coding this value
-        owner: '0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb',
+        owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,
@@ -181,17 +179,17 @@ export default class Sound implements Strategy {
         {
           version: Sound.version,
           uri: ifIpfsConvertToNativeIpfs(datum.audio_url),
-          mimetype: 'audio',
+          mimetype: "audio",
         },
         {
           version: Sound.version,
           uri: ifIpfsConvertToNativeIpfs(datum.image),
-          mimetype: 'image',
+          mimetype: "image",
         },
         {
           version: Sound.version,
           uri: ifIpfsConvertToNativeIpfs(datum.animation_url),
-          mimetype: 'image',
+          mimetype: "image",
         },
       ],
     };
