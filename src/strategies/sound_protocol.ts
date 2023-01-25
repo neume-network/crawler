@@ -1,14 +1,14 @@
-import { ExtractionWorkerHandler } from '@neume-network/extraction-worker';
-import { decodeLog, toHex } from 'eth-fun';
-import { callTokenUri } from '../components/call-tokenuri.js';
-import { getArweaveTokenUri } from '../components/get-arweave-tokenuri.js';
-import { callOwner } from '../components/call-owner.js';
-import { Config, JsonRpcLog, NFT } from '../types.js';
-import { Strategy } from './strategy.types.js';
-import { randomItem } from '../utils.js';
+import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { decodeLog, toHex } from "eth-fun";
+import { callTokenUri } from "../components/call-tokenuri.js";
+import { getArweaveTokenUri } from "../components/get-arweave-tokenuri.js";
+import { callOwner } from "../components/call-owner.js";
+import { Config, JsonRpcLog, NFT } from "../types.js";
+import { Strategy } from "./strategy.types.js";
+import { randomItem } from "../utils.js";
 
 export default class SoundProtocol implements Strategy {
-  public static version = '1.0.0';
+  public static version = "1.0.0";
   public static createdAtBlock = 15570834;
   public static deprecatedAtBlock = null;
   public static invalidIDs = [
@@ -25,7 +25,7 @@ export default class SoundProtocol implements Strategy {
 
   filterContracts = async (from: number, to: number) => {
     const editionCreatedSelector =
-      '0x405098db99342b699216d8150e930dbbf2f686f5a43485aed1e69219dafd4935';
+      "0x405098db99342b699216d8150e930dbbf2f686f5a43485aed1e69219dafd4935";
 
     console.log(123123123);
     const rpcHost = randomItem(this.config.rpc);
@@ -43,8 +43,8 @@ export default class SoundProtocol implements Strategy {
     const toBlock = toHex(to);
 
     const message = await this.worker({
-      type: 'json-rpc',
-      method: 'eth_getLogs',
+      type: "json-rpc",
+      method: "eth_getLogs",
       commissioner: SoundProtocol.name,
       params: [
         {
@@ -53,7 +53,7 @@ export default class SoundProtocol implements Strategy {
           topics: [[editionCreatedSelector]],
         },
       ],
-      version: '0.0.1',
+      version: "0.0.1",
       options,
     });
 
@@ -74,12 +74,12 @@ export default class SoundProtocol implements Strategy {
       topics.shift();
       const result = decodeLog(
         [
-          { type: 'address', name: 'soundEdition', indexed: true },
-          { type: 'address', name: 'deployer', indexed: true },
-          { type: 'bytes', name: 'initData' },
-          { type: 'address[]', name: 'contracts' },
-          { type: 'bytes[]', name: 'data' },
-          { type: 'bytes[]', name: 'results' },
+          { type: "address", name: "soundEdition", indexed: true },
+          { type: "address", name: "deployer", indexed: true },
+          { type: "bytes", name: "initData" },
+          { type: "address[]", name: "contracts" },
+          { type: "bytes[]", name: "data" },
+          { type: "bytes[]", name: "results" },
         ],
         log.data,
         topics,
@@ -136,8 +136,8 @@ export default class SoundProtocol implements Strategy {
       },
       platform: {
         version: SoundProtocol.version,
-        name: 'Sound Protocol',
-        uri: 'https://sound.xyz',
+        name: "Sound Protocol",
+        uri: "https://sound.xyz",
       },
       erc721: {
         version: SoundProtocol.version,
@@ -162,12 +162,12 @@ export default class SoundProtocol implements Strategy {
         {
           version: SoundProtocol.version,
           uri: datum.losslessAudio,
-          mimetype: 'audio',
+          mimetype: "audio",
         },
         {
           version: SoundProtocol.version,
           uri: datum.image,
-          mimetype: 'image',
+          mimetype: "image",
         },
       ],
     };

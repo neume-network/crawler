@@ -5,13 +5,12 @@ import https from "https";
 import { Strategy } from "./strategies/strategy.types.js";
 import { Contracts, RpcConfig } from "./types.js";
 
-import Sound from './strategies/sound.js';
+import Sound from "./strategies/sound.js";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
 import MintSongsV2 from "./strategies/mintsongs_v2.js";
 import Noizd from "./strategies/noizd.js";
-
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -21,22 +20,22 @@ export function randomItem<T>(arr: Array<T>): T {
 
 export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
   return new Promise((resolve, reject) => {
-    let data = '';
+    let data = "";
     const req = https.request(
       rpcHost.url,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...(rpcHost.key && { Authorization: `Bearer ${rpcHost.key}` }),
         },
       },
       (res) => {
-        res.setEncoding('utf8');
-        res.on('error', reject);
-        res.on('data', (chunk) => {
+        res.setEncoding("utf8");
+        res.on("error", reject);
+        res.on("data", (chunk) => {
           data += chunk;
         });
-        res.on('end', () => {
+        res.on("end", () => {
           const ret = JSON.parse(data);
           if (ret.error) reject(ret.error);
           resolve(parseInt(ret.result, 16));
@@ -44,22 +43,22 @@ export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
       },
     );
 
-    req.on('error', reject);
+    req.on("error", reject);
     req.write('{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}');
     req.end();
   });
 }
 
 export async function getDefaultContracts(): Promise<Contracts> {
-  const defaultContractsPath = new URL('../assets/contracts.hardcode.json', import.meta.url);
+  const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
 
-  return JSON.parse(await readFile(defaultContractsPath, 'utf-8'));
+  return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
 }
 
 export async function getUserContracts(): Promise<Contracts> {
-  const userContractsPath = path.resolve('./contracts.json');
+  const userContractsPath = path.resolve("./contracts.json");
 
-  return JSON.parse(await readFile(userContractsPath, 'utf-8'));
+  return JSON.parse(await readFile(userContractsPath, "utf-8"));
 }
 
 /**
@@ -77,19 +76,14 @@ export async function getAllContracts(): Promise<Contracts> {
 /**
  * New strategies should be added here.
  */
-export function getStrategies(
-  strategyNames: string[],
-  from: number,
-  to: number
-) {
+export function getStrategies(strategyNames: string[], from: number, to: number) {
   const strategies: Array<typeof Strategy> = [
     Sound,
     SoundProtocol,
     Zora,
     CatalogV2,
     MintSongsV2,
-    Noizd
-
+    Noizd,
   ];
 
   return strategies.filter(
@@ -106,7 +100,7 @@ export function breakdownIpfs(ipfsUri: string) {
   const pathGatewayPattern = /^https?:\/\/[^/]+\/ipfs\/([^/?#]+)(.*)/;
   const subdomainGatewayPattern = /^https?:\/\/([^/]+)\.ipfs\.[^/?#]+(.*)/;
 
-  if (typeof ipfsUri !== 'string') throw new Error('Given IPFS URI should be of type string');
+  if (typeof ipfsUri !== "string") throw new Error("Given IPFS URI should be of type string");
 
   const nativeIpfsMatch = ipfsUri.match(nativeIpfsPattern);
   if (nativeIpfsMatch) {
@@ -139,7 +133,7 @@ export function breakdownIpfs(ipfsUri: string) {
 }
 
 export function anyIpfsToNativeIpfs(ipfsUri: string) {
-  const IPFSIANAScheme = 'ipfs://';
+  const IPFSIANAScheme = "ipfs://";
   const ipfs = breakdownIpfs(ipfsUri);
   return `${IPFSIANAScheme}${ipfs.cid}${ipfs.path}`;
 }
