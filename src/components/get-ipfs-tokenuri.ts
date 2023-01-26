@@ -5,10 +5,9 @@ import { Config } from "../types.js";
 export async function getIpfsTokenUri(
   uri: string,
   worker: ExtractionWorkerHandler,
-  config: Config
+  config: Config,
 ): Promise<Record<any, any>> {
-  if (!config.ipfs)
-    throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
+  if (!config.ipfs) throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
 
   const msg = await worker({
     type: "ipfs",
@@ -25,9 +24,11 @@ export async function getIpfsTokenUri(
 
   if (msg.error) {
     throw new Error(
-      `Error while fetching IPFS URI: ${JSON.stringify(
-        msg.error
-      )} \n${JSON.stringify(msg, null, 2)}`
+      `Error while fetching IPFS URI: ${JSON.stringify(msg.error)} \n${JSON.stringify(
+        msg,
+        null,
+        2,
+      )}`,
     );
   }
 

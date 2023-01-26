@@ -1,13 +1,13 @@
-import { ExtractionWorkerHandler } from '@neume-network/extraction-worker';
+import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 
 export async function fetchTokenUri(url: string, worker: ExtractionWorkerHandler) {
   const msg = await worker({
-    type: 'https',
-    version: '0.0.1',
-    commissioner: '',
+    type: "https",
+    version: "0.0.1",
+    commissioner: "",
     options: {
       url,
-      method: 'GET',
+      method: "GET",
       retry: {
         retries: 3,
       },

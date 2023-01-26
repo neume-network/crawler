@@ -1,8 +1,5 @@
 // All common types are declared here
-import {
-  Config as ExtractionWorkerConfig,
-  Transaction,
-} from "@neume-network/schema";
+import { Config as ExtractionWorkerConfig, Transaction } from "@neume-network/schema";
 
 export const CONSTANTS = {
   DATA_DIR: "data",

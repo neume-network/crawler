@@ -5,10 +5,9 @@ import { Config } from "../types.js";
 export async function getArweaveTokenUri(
   uri: string,
   worker: ExtractionWorkerHandler,
-  config: Config
+  config: Config,
 ) {
-  if (!config.arweave?.httpsGateway)
-    throw new Error(`Arweave gateway is required ${uri}`);
+  if (!config.arweave?.httpsGateway) throw new Error(`Arweave gateway is required ${uri}`);
 
   const msg = await worker({
     type: "arweave",
@@ -24,9 +23,7 @@ export async function getArweaveTokenUri(
   });
 
   if (msg.error)
-    throw new Error(
-      `Error while fetching Arweave URI: ${JSON.stringify(msg, null, 2)}`
-    );
+    throw new Error(`Error while fetching Arweave URI: ${JSON.stringify(msg, null, 2)}`);
 
   return msg.results as Record<any, any>;
 }

@@ -31,26 +31,23 @@ export default class Noizd implements Strategy {
       this.worker,
       this.config,
       nft.erc721.blockNumber,
-      nft
+      nft,
     );
     try {
       nft.erc721.token.uriContent = await getIpfsTokenUri(
         nft.erc721.token.uri,
         this.worker,
-        this.config
+        this.config,
       );
     } catch (err: any) {
       if (err.message.includes("Invalid CID")) {
-        console.warn(
-          "Invalid CID: Ignoring the given track.",
-          JSON.stringify(nft, null, 2)
-        );
+        console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
         return null;
       }
       if (err.message.includes("504") || err.message.includes("AbortError")) {
         console.warn(
           "Couldn't find CID on the IPFS network: Ignoring NFT",
-          JSON.stringify(nft, null, 2)
+          JSON.stringify(nft, null, 2),
         );
         return null;
       }
@@ -61,9 +58,7 @@ export default class Noizd implements Strategy {
 
     let duration;
     if (datum?.duration) {
-      duration = `PT${Math.floor(datum.duration / 60)}M${(
-        datum.duration % 60
-      ).toFixed(0)}S`;
+      duration = `PT${Math.floor(datum.duration / 60)}M${(datum.duration % 60).toFixed(0)}S`;
     }
 
     return {
