@@ -11,7 +11,7 @@ export default async function (
   to: number,
   recrawl: boolean,
   config: Config,
-  _strategies: typeof Strategy[]
+  _strategies: typeof Strategy[],
 ) {
   if (!config.rpc.length) throw new Error("Atleast one RPC host is required");
 
@@ -35,13 +35,10 @@ export default async function (
             version: contract.version,
           };
         });
-      })
+      }),
     );
   }
 
-  await writeFile(
-    path.resolve("./contracts.json"),
-    JSON.stringify(userContracts, null, 2)
-  );
+  await writeFile(path.resolve("./contracts.json"), JSON.stringify(userContracts, null, 2));
   console.log("Exiting from filter-contracts command");
 }

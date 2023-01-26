@@ -1,3 +1,7 @@
+/**
+ * Sound is the predecessor to sound-protocol
+ */
+
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { decodeLog, toHex } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
@@ -6,19 +10,12 @@ import { callOwner } from "../components/call-owner.js";
 
 import { Config, JsonRpcLog, NFT } from "../types.js";
 import { Strategy } from "./strategy.types.js";
-import { randomItem, ifIpfsConvertToNativeIpfs } from "../utils.js";
-
-// Instead of querying at the block number soundxyz NFT
-// was minted, we query at a higher block number because
-// soundxyz changed their tokenURI and the previous one
-// doesn't work anymore. https://github.com/neume-network/data/issues/19
-//
-// createdAtBlock           13725566 (https://etherscan.io/tx/0xfa325f74eb6c7f5e6bb60a264404543d6158f79de01bc5aab35180354e554dce)
-// workingAfterBlockNumber  15050010
+import { randomItem } from "../utils.js";
+import { ifIpfsConvertToNativeIpfs } from "ipfs-uri-utils";
 
 export default class Sound implements Strategy {
   public static version = "1.0.0";
-  public static createdAtBlock = 15050010;
+  public static createdAtBlock = 13725566;
   public static deprecatedAtBlock = null;
   public static invalidIDs = [];
 
@@ -75,7 +72,7 @@ export default class Sound implements Strategy {
 
     const logs = message.results as any as Array<JsonRpcLog>;
 
-    const l = logs.map((log) => {
+    const contracts = logs.map((log) => {
       const topics = log.topics;
       topics.shift();
       const result = decodeLog(
@@ -108,12 +105,19 @@ export default class Sound implements Strategy {
       };
     });
 
-    console.log(l);
-
-    return l;
+    return contracts;
   };
 
   crawl = async (nft: NFT) => {
+    // Instead of querying at the block number soundxyz NFT
+    // was minted, we query at a higher block number because
+    // soundxyz changed their tokenURI and the previous one
+    // doesn't work anymore. https://github.com/neume-network/data/issues/19
+    //
+    // createdAtBlock           13725566 (https://etherscan.io/tx/0xfa325f74eb6c7f5e6bb60a264404543d6158f79de01bc5aab35180354e554dce)
+    // workingAfterBlockNumber  15050010
+    const WORKING_AFTER_BLOCK = 15050010;
+
     if (
       Sound.invalidIDs.filter((id) => `${nft.erc721.address}/${nft.erc721.token.id}`.match(id))
         .length != 0
@@ -127,7 +131,7 @@ export default class Sound implements Strategy {
     nft.erc721.token.uri = await callTokenUri(
       this.worker,
       this.config,
-      nft.erc721.blockNumber,
+      Math.max(nft.erc721.blockNumber, WORKING_AFTER_BLOCK),
       nft,
     );
 
@@ -141,11 +145,6 @@ export default class Sound implements Strategy {
     );
 
     const datum = nft.erc721.token.uriContent;
-
-    let duration;
-    if (datum?.duration) {
-      duration = `PT${Math.floor(datum.duration / 60)}M${(datum.duration % 60).toFixed(0)}S`;
-    }
 
     return {
       version: Sound.version,
@@ -163,8 +162,12 @@ export default class Sound implements Strategy {
       erc721: {
         version: Sound.version,
         createdAt: nft.erc721.blockNumber,
-        // TODO: Stop hard coding this value
-        owner: "0x4456AE02EA5534cEd3A151e41a715bBA685A7CAb",
+        transaction: {
+          from: nft.erc721.transaction.from,
+          to: nft.erc721.transaction.to,
+          blockNumber: nft.erc721.transaction.blockNumber,
+          transactionHash: nft.erc721.transaction.transactionHash,
+        },
         address: nft.erc721.address,
         tokenId: nft.erc721.token.id,
         tokenURI: nft.erc721.token.uri,
