@@ -32,6 +32,9 @@
     "p-map": "^5.5.0",
     "yargs": "^17.6.2"
   },
+  "engines": {
+    "node": "16"
+  },
   "devDependencies": {
     "@types/node": "^18.11.9",
     "@types/yargs": "^17.0.14",
