@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import https from "https";
+import Sound from "./strategies/sound.js";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
@@ -60,11 +61,12 @@ export async function getAllContracts() {
  */
 export function getStrategies(strategyNames, from, to) {
     const strategies = [
+        Sound,
         SoundProtocol,
         Zora,
         CatalogV2,
         MintSongsV2,
-        Noizd
+        Noizd,
     ];
     return strategies.filter((s) => s.createdAtBlock <= from &&
         to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&

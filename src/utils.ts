@@ -5,6 +5,7 @@ import https from "https";
 import { Strategy } from "./strategies/strategy.types.js";
 import { Contracts, RpcConfig } from "./types.js";
 
+import Sound from "./strategies/sound.js";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
@@ -39,22 +40,17 @@ export function getLatestBlockNumber(rpcHost: RpcConfig): Promise<number> {
           if (ret.error) reject(ret.error);
           resolve(parseInt(ret.result, 16));
         });
-      }
+      },
     );
 
     req.on("error", reject);
-    req.write(
-      '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
-    );
+    req.write('{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}');
     req.end();
   });
 }
 
 export async function getDefaultContracts(): Promise<Contracts> {
-  const defaultContractsPath = new URL(
-    "../assets/contracts.hardcode.json",
-    import.meta.url
-  );
+  const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
 
   return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
 }
@@ -80,24 +76,20 @@ export async function getAllContracts(): Promise<Contracts> {
 /**
  * New strategies should be added here.
  */
-export function getStrategies(
-  strategyNames: string[],
-  from: number,
-  to: number
-) {
+export function getStrategies(strategyNames: string[], from: number, to: number) {
   const strategies: Array<typeof Strategy> = [
+    Sound,
     SoundProtocol,
     Zora,
     CatalogV2,
     MintSongsV2,
-    Noizd
-
+    Noizd,
   ];
 
   return strategies.filter(
     (s) =>
       s.createdAtBlock <= from &&
       to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
-      strategyNames.includes(s.name)
+      strategyNames.includes(s.name),
   );
 }
