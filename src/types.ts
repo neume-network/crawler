@@ -26,10 +26,21 @@ export type Config = {
   arweave?: {
     httpsGateway: string;
   };
+  /**
+   * The steps to take while crawling. RPC endpoints can't be
+   * queried for the complete blockchain. They need to be
+   * queried in small blocks/segments.
+   */
   step: {
     block: number;
     contract: number;
   };
+  /**
+   * The time to wait (in milliseconds) before starting the next
+   * crawl cycle. If the crawler has not crawled up to the latest block
+   * it will ignore breatheTime and start the cycle immediately.
+   **/
+  breatheTimeMS: number;
   worker: ExtractionWorkerConfig;
 };
 
