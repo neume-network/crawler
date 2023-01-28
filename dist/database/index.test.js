@@ -203,6 +203,10 @@ test.serial("should get all changed ids given a block range", async (t) => {
             id: { chainId, address: "0xa0", tokenId: "2", blockNumber: "120" },
             value: { test: "updated-data" },
         },
+        {
+            id: { chainId, address: "0xa0", tokenId: "0", blockNumber: "11" },
+            value: { test: "data" },
+        },
     ];
     await Promise.all(values.map((v) => db.insert(v.id, v.value)));
     let ids = await db.getIdsChanged("110", "115");

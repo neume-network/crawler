@@ -37,15 +37,39 @@ export class DB {
     return { chainId, address, tokenId, blockNumber };
   }
 
+  datumToChangeKey(datum: Datum) {
+    return `${this.encodeNumber(datum.blockNumber)}/${datum.chainId}/${datum.address}/${
+      datum.tokenId
+    }`;
+  }
+
+  // LevelDB stores keys in lexicographical order. Therefore,
+  // 1 < 10 < 9. This is unlike natural order where 1 < 9 < 10.
+  //
+  // The solution is to pad numbers with zero such that lexicographical
+  // order is the same as natural order. For example, if we pad
+  // numbers upto two digits they will become 01 < 09 < 10.
+  //
+  // The above solution will only work for postive numbers and
+  // will break for numbers greater than maximum digits. In the
+  // above example, the solution will break for numbers greater than 100.
+  encodeNumber(num: string) {
+    const MAX_LENGTH = 10;
+    if (num.length > MAX_LENGTH)
+      throw new Error(`Database cannot encode number greater than 10 digits`);
+    return num.padStart(MAX_LENGTH, "0");
+  }
+
+  decodeNumber(num: string) {
+    return Number(num).toString();
+  }
+
   getMany(datum: {
     chainId: string;
     address: string;
     blockNumber?: string;
   }): AsyncGenerator<ReturnValue>;
-  getMany(datum: {
-    chainId: string;
-    blockNumber?: string;
-  }): AsyncGenerator<ReturnValue>;
+  getMany(datum: { chainId: string; blockNumber?: string }): AsyncGenerator<ReturnValue>;
   async *getMany(datum: Partial<Datum>): AsyncGenerator<ReturnValue> {
     const { chainId, address, tokenId, blockNumber } = datum;
     const tillBlockNumber = blockNumber || String(Number.MAX_SAFE_INTEGER);
@@ -61,8 +85,7 @@ export class DB {
     const iter = this.level.iterator(filter);
     const firstResult = await iter.next();
 
-    if (!firstResult)
-      throw new Error("Couldn't find any items for the given DB query");
+    if (!firstResult) throw new Error("Couldn't find any items for the given DB query");
 
     let lastId = this.keyToDatum(firstResult[0]);
     let result = { id: this.keyToDatum(firstResult[0]), value: firstResult[1] };
@@ -98,9 +121,7 @@ export class DB {
       })) {
         return { id: this.keyToDatum(id), value };
       }
-      const error: any = new Error(
-        `Level not found for ${JSON.stringify(datum)}`
-      );
+      const error: any = new Error(`Level not found for ${JSON.stringify(datum)}`);
       error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
       throw error;
     } else if (chainId && address && tokenId) {
@@ -113,17 +134,13 @@ export class DB {
         return { id: this.keyToDatum(id), value };
       }
 
-      const error: any = new Error(
-        `Level not found for ${JSON.stringify(datum)}`
-      );
+      const error: any = new Error(`Level not found for ${JSON.stringify(datum)}`);
       error.code = "LEVEL_NOT_FOUND"; // We use this code because level also uses it
       throw error;
     }
 
     throw new Error(
-      `Insufficient parametrs provided to DB.getOne function ${JSON.stringify(
-        datum
-      )}`
+      `Insufficient parametrs provided to DB.getOne function ${JSON.stringify(datum)}`,
     );
   }
 
@@ -132,11 +149,11 @@ export class DB {
     const ids = new Map();
 
     for await (const [_id, value] of this.changeIndex.iterator({
-      gte: `${from}/`,
-      lte: `${to}/~`,
+      gte: `${this.encodeNumber(from)}/`,
+      lte: `${this.encodeNumber(to)}/~`,
     })) {
       const [blockNumber, chainId, address, tokenId] = _id.split("/");
-      const id = `${chainId}/${address}/${tokenId}/${blockNumber}`;
+      const id = `${chainId}/${address}/${tokenId}/${this.decodeNumber(blockNumber)}`;
       const nid = `${chainId}/${address}/${tokenId}`;
       ids.set(nid, id);
     }
@@ -155,33 +172,25 @@ export class DB {
           id: this.keyToDatum(id),
           value,
         };
-      })
+      }),
     );
   }
 
   async insert(datum: Datum, data: any) {
     await this.level.put(this.datumToKey(datum), data);
-    await this.changeIndex.put(
-      `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`,
-      ""
-    );
+    await this.changeIndex.put(this.datumToChangeKey(datum), "");
   }
 
   async del(datum: Datum) {
     await this.level.del(this.datumToKey(datum));
-    await this.changeIndex.del(
-      `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`
-    );
+    await this.changeIndex.del(this.datumToChangeKey(datum));
   }
 
   async createChangeIndex() {
     let count = 0;
     for await (const [_id, value] of this.level.iterator()) {
       const datum = this.keyToDatum(_id);
-      await this.changeIndex.put(
-        `${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`,
-        ""
-      );
+      await this.changeIndex.put(this.datumToChangeKey(datum), "");
       count++;
     }
 

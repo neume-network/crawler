@@ -17,6 +17,28 @@ export class DB {
         const [chainId, address, tokenId, blockNumber] = id.split("/");
         return { chainId, address, tokenId, blockNumber };
     }
+    datumToChangeKey(datum) {
+        return `${this.encodeNumber(datum.blockNumber)}/${datum.chainId}/${datum.address}/${datum.tokenId}`;
+    }
+    // LevelDB stores keys in lexicographical order. Therefore,
+    // 1 < 10 < 9. This is unlike natural order where 1 < 9 < 10.
+    //
+    // The solution is to pad numbers with zero such that lexicographical
+    // order is the same as natural order. For example, if we pad
+    // numbers upto two digits they will become 01 < 09 < 10.
+    //
+    // The above solution will only work for postive numbers and
+    // will break for numbers greater than maximum digits. In the
+    // above example, the solution will break for numbers greater than 100.
+    encodeNumber(num) {
+        const MAX_LENGTH = 10;
+        if (num.length > MAX_LENGTH)
+            throw new Error(`Database cannot encode number greater than 10 digits`);
+        return num.padStart(MAX_LENGTH, "0");
+    }
+    decodeNumber(num) {
+        return Number(num).toString();
+    }
     async *getMany(datum) {
         const { chainId, address, tokenId, blockNumber } = datum;
         const tillBlockNumber = blockNumber || String(Number.MAX_SAFE_INTEGER);
@@ -86,11 +108,11 @@ export class DB {
         to = to ?? from;
         const ids = new Map();
         for await (const [_id, value] of this.changeIndex.iterator({
-            gte: `${from}/`,
-            lte: `${to}/~`,
+            gte: `${this.encodeNumber(from)}/`,
+            lte: `${this.encodeNumber(to)}/~`,
         })) {
             const [blockNumber, chainId, address, tokenId] = _id.split("/");
-            const id = `${chainId}/${address}/${tokenId}/${blockNumber}`;
+            const id = `${chainId}/${address}/${tokenId}/${this.decodeNumber(blockNumber)}`;
             const nid = `${chainId}/${address}/${tokenId}`;
             ids.set(nid, id);
         }
@@ -108,17 +130,17 @@ export class DB {
     }
     async insert(datum, data) {
         await this.level.put(this.datumToKey(datum), data);
-        await this.changeIndex.put(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`, "");
+        await this.changeIndex.put(this.datumToChangeKey(datum), "");
     }
     async del(datum) {
         await this.level.del(this.datumToKey(datum));
-        await this.changeIndex.del(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`);
+        await this.changeIndex.del(this.datumToChangeKey(datum));
     }
     async createChangeIndex() {
         let count = 0;
         for await (const [_id, value] of this.level.iterator()) {
             const datum = this.keyToDatum(_id);
-            await this.changeIndex.put(`${datum.blockNumber}/${datum.chainId}/${datum.address}/${datum.tokenId}`, "");
+            await this.changeIndex.put(this.datumToChangeKey(datum), "");
             count++;
         }
         console.log("Change index updated", count);
