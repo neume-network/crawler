@@ -14,6 +14,8 @@ export default class SoundProtocol implements Strategy {
   public static invalidIDs = [
     /^0xdf4f25cd13567a74572063dcf15f101c22be1af0\/321$/, // invalid tokenURI
     /^0x9f396644ec4b2a2bc3c6cf665d29165dde0e83f1\/\d+$/, // tokenURI is not properly formatted and is not Arweave
+    /^0xd80e33b9a9276458bf3b115e3d7924ea3663bb84\/\d+$/, // tokenURI is not properly formatted 
+    /^0x81c8c35fcb7ac4803812106c594b40c716a260d2\/\d+$/, // tokenURI is not properly formatted
   ];
   private worker: ExtractionWorkerHandler;
   private config: Config;
