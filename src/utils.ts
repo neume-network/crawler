@@ -56,7 +56,7 @@ export async function getDefaultContracts(): Promise<Contracts> {
 }
 
 export async function getUserContracts(): Promise<Contracts> {
-  const userContractsPath = path.resolve("./contracts.json");
+  const userContractsPath = path.resolve("./data/contracts.json");
 
   return JSON.parse(await readFile(userContractsPath, "utf-8"));
 }

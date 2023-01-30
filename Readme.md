@@ -81,7 +81,7 @@ Neume heavily depends on a RPC node and avoids centralized servers.
 from = process.argv[2]
 to = process.argv[4]
 
-constracts = import('./contracts.json')
+contracts = import('./data/contracts.json')
 
 for contract in contracts:
   // use eth_getLog to find all transfer events
