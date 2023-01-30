@@ -39,6 +39,6 @@ export default async function (
     );
   }
 
-  await writeFile(path.resolve("./contracts.json"), JSON.stringify(userContracts, null, 2));
+  await writeFile(path.resolve("./data/contracts.json"), JSON.stringify(userContracts, null, 2));
   console.log("Exiting from filter-contracts command");
 }

@@ -8,42 +8,45 @@ import CatalogV2 from "./strategies/catalog_v2.js";
 import MintSongsV2 from "./strategies/mintsongs_v2.js";
 import Noizd from "./strategies/noizd.js";
 export function randomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 //curl -s https://cloudflare-eth.com/v1/mainnet -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 export function getLatestBlockNumber(rpcHost) {
-    return new Promise((resolve, reject) => {
-        let data = "";
-        const req = https.request(rpcHost.url, {
-            method: "POST",
-            headers: {
-                ...(rpcHost.key && { Authorization: `Bearer ${rpcHost.key}` }),
-            },
-        }, (res) => {
-            res.setEncoding("utf8");
-            res.on("error", reject);
-            res.on("data", (chunk) => {
-                data += chunk;
-            });
-            res.on("end", () => {
-                const ret = JSON.parse(data);
-                if (ret.error)
-                    reject(ret.error);
-                resolve(parseInt(ret.result, 16));
-            });
+  return new Promise((resolve, reject) => {
+    let data = "";
+    const req = https.request(
+      rpcHost.url,
+      {
+        method: "POST",
+        headers: {
+          ...(rpcHost.key && { Authorization: `Bearer ${rpcHost.key}` }),
+        },
+      },
+      (res) => {
+        res.setEncoding("utf8");
+        res.on("error", reject);
+        res.on("data", (chunk) => {
+          data += chunk;
         });
-        req.on("error", reject);
-        req.write('{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}');
-        req.end();
-    });
+        res.on("end", () => {
+          const ret = JSON.parse(data);
+          if (ret.error) reject(ret.error);
+          resolve(parseInt(ret.result, 16));
+        });
+      },
+    );
+    req.on("error", reject);
+    req.write('{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}');
+    req.end();
+  });
 }
 export async function getDefaultContracts() {
-    const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
-    return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
+  const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
+  return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
 }
 export async function getUserContracts() {
-    const userContractsPath = path.resolve("./contracts.json");
-    return JSON.parse(await readFile(userContractsPath, "utf-8"));
+  const userContractsPath = path.resolve("./data/contracts.json");
+  return JSON.parse(await readFile(userContractsPath, "utf-8"));
 }
 /**
  * User's contracts.json contains the new found addresses
@@ -51,24 +54,20 @@ export async function getUserContracts() {
  * This function reads and merge them both.
  */
 export async function getAllContracts() {
-    return {
-        ...(await getDefaultContracts()),
-        ...(await getUserContracts()),
-    };
+  return {
+    ...(await getDefaultContracts()),
+    ...(await getUserContracts()),
+  };
 }
 /**
  * New strategies should be added here.
  */
 export function getStrategies(strategyNames, from, to) {
-    const strategies = [
-        Sound,
-        SoundProtocol,
-        Zora,
-        CatalogV2,
-        MintSongsV2,
-        Noizd,
-    ];
-    return strategies.filter((s) => s.createdAtBlock <= from &&
-        to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
-        strategyNames.includes(s.name));
+  const strategies = [Sound, SoundProtocol, Zora, CatalogV2, MintSongsV2, Noizd];
+  return strategies.filter(
+    (s) =>
+      s.createdAtBlock <= from &&
+      to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
+      strategyNames.includes(s.name),
+  );
 }

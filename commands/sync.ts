@@ -8,18 +8,11 @@ import path from "path";
 import { getUserContracts } from "../src/utils.js";
 
 async function getLastSyncedBlock() {
-  const lastId = await db.changeIndex
-    .iterator({ reverse: true, limit: 1 })
-    .next();
+  const lastId = await db.changeIndex.iterator({ reverse: true, limit: 1 }).next();
   return lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
 }
 
-export default async function (
-  from: number | undefined,
-  to: number,
-  url: string,
-  config: Config
-) {
+export default async function (from: number | undefined, to: number, url: string, config: Config) {
   const worker = ExtractionWorker(config.worker);
   let client: JSONRPCClient;
   let id = 0;
@@ -41,12 +34,11 @@ export default async function (
           },
         },
       }).then((msg) => {
-        if (msg.error)
-          return Promise.reject(new Error(JSON.stringify(msg.error)));
+        if (msg.error) return Promise.reject(new Error(JSON.stringify(msg.error)));
 
         return client.receive(msg.results as any);
       }),
-    () => (++id).toString() // HACK because of a bug in JSON-RPC-Client
+    () => (++id).toString(), // HACK because of a bug in JSON-RPC-Client
   );
 
   let syncFrom = from ?? (await getLastSyncedBlock());
@@ -57,7 +49,7 @@ export default async function (
   const userContractsNew = await client.request("getUserContracts", null);
   const userContractsOld = await getUserContracts();
   const userContracts = { ...userContractsNew, ...userContractsOld };
-  const userContractsPath = path.resolve("./contracts.json");
+  const userContractsPath = path.resolve("./data/contracts.json");
   await fs.writeFile(userContractsPath, JSON.stringify(userContracts, null, 2));
   console.log("Updated local list of contracts");
 
@@ -71,7 +63,7 @@ export default async function (
     await Promise.all(
       returnValues.map(async (r) => {
         await db.insert(r.id, r.value);
-      })
+      }),
     );
 
     console.log(`Wrote ${returnValues.length} entries to database`);
