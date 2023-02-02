@@ -18,6 +18,10 @@ export default class MintSongsV2 {
             // because the contract is broken at the block the NFTs
             // were minted. Contract was upgraded later many times.
             const BLOCK_NUMBER = 16543384;
+            if (MintSongsV2.invalidIDs.filter((id) => `${nft.erc721.address}/${nft.erc721.token.id}`.match(id)).length != 0) {
+                console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
+                return null;
+            }
             nft.erc721.token.uri = await callTokenUri(this.worker, this.config, Math.max(nft.erc721.blockNumber, BLOCK_NUMBER), nft);
             try {
                 nft.erc721.token.uriContent = await getIpfsTokenUri(nft.erc721.token.uri, this.worker, this.config);
@@ -133,4 +137,6 @@ MintSongsV2.version = "2.0.0";
 // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
 MintSongsV2.createdAtBlock = 14799837;
 MintSongsV2.deprecatedAtBlock = null;
-MintSongsV2.invalidIDs = [];
+MintSongsV2.invalidIDs = [
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/, // Ignore track because URI contains a space at the end
+];
