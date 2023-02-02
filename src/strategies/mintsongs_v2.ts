@@ -37,7 +37,7 @@ export default class MintSongsV2 implements Strategy {
     // Crawling MintSongs at this block number or higher
     // because the contract is broken at the block the NFTs
     // were minted. Contract was upgraded later many times.
-    const BLOCK_NUMBER = 16543384;
+    const BLOCK_NUMBER = 15504610;
 
     if (
       MintSongsV2.invalidIDs.filter((id) =>
