@@ -24,7 +24,7 @@ const rpcHosts = [
  * - The name should match the class name of the strategy.
  * - The name is case-sensitive.
  * */
-export const strategies = ["SoundProtocol", "MintSongsV2", "CatalogV2", "Zora"];
+export const strategies = ["Sound", "SoundProtocol", "MintSongsV2", "CatalogV2", "Zora"];
 
 
 /**
