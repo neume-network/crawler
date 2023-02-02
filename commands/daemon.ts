@@ -23,7 +23,7 @@ export default async function daemon(
   const RANGE_FOR_CRAWL = 5000;
   let from = _from ?? (await getLastCrawledBlock());
   let to = Math.min(from + RANGE_FOR_CRAWL, await getLatestBlockNumber(config.rpc[0]));
-  const strategies = getStrategies(strategyNames, from, to);
+  let strategies = getStrategies(strategyNames, from, to);
 
   const task = async () => {
     const latestBlockNumber = await getLatestBlockNumber(config.rpc[0]);
@@ -31,6 +31,7 @@ export default async function daemon(
 
     console.log(`\n\n***** Starting a crawl cycle from ${from} to ${to} *****\n`);
 
+    strategies = getStrategies(strategyNames, from, to);
     await filter_contracts(from, to, recrawl, config, strategies);
     await crawl(from, to, recrawl, config, strategies);
 
