@@ -20,6 +20,11 @@ export default class SoundProtocol implements Strategy {
     /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/1$/,
     /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/4$/,
     /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/3$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/4$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/5$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/5$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/6$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/6$/,
     /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/1$/, // invalid tokenURI
     /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/2$/, // invalid tokenURI
     /^0xdf4f25cd13567a74572063dcf15f101c22be1af0\/321$/, // invalid tokenURI
@@ -121,6 +126,13 @@ export default class SoundProtocol implements Strategy {
       nft.erc721.blockNumber,
       nft,
     );
+
+    if (nft.erc721.token.uri.includes("https://test.com")) {
+      console.log(
+        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because includes invalid tokenURI`,
+      );
+      return null;
+    }
 
     nft.erc721.token.uriContent = await getArweaveTokenUri(
       nft.erc721.token.uri,
