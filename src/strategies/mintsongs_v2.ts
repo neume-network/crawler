@@ -23,6 +23,7 @@ export default class MintSongsV2 implements Strategy {
   public static deprecatedAtBlock = null;
   public static invalidIDs = [
     /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/, // Ignore track because URI contains a space at the end
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/113$/, // NFT has been burned
   ];
 
   private worker: ExtractionWorkerHandler;

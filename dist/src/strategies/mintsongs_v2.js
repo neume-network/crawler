@@ -138,5 +138,6 @@ MintSongsV2.version = "2.0.0";
 MintSongsV2.createdAtBlock = 14799837;
 MintSongsV2.deprecatedAtBlock = null;
 MintSongsV2.invalidIDs = [
-    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/, // Ignore track because URI contains a space at the end
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/,
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/113$/, // NFT has been burned
 ];
