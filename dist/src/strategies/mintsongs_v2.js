@@ -14,6 +14,10 @@ import { randomItem } from "../utils.js";
 export default class MintSongsV2 {
     constructor(worker, config) {
         this.crawl = async (nft) => {
+            if (MintSongsV2.invalidIDs.filter((id) => `${nft.erc721.address}/${nft.erc721.token.id}`.match(id)).length != 0) {
+                console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
+                return null;
+            }
             nft.erc721.token.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
             try {
                 nft.erc721.token.uriContent = await getIpfsTokenUri(nft.erc721.token.uri, this.worker, this.config);
@@ -129,3 +133,7 @@ MintSongsV2.version = "2.0.0";
 // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
 MintSongsV2.createdAtBlock = 14799837;
 MintSongsV2.deprecatedAtBlock = null;
+MintSongsV2.invalidIDs = [
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/1$/,
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/2$/, // invalid tokenURI
+];

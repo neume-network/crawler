@@ -21,6 +21,11 @@ export default class MintSongsV2 implements Strategy {
   // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
   public static createdAtBlock = 14799837;
   public static deprecatedAtBlock = null;
+  public static invalidIDs = [
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/1$/, // invalid tokenURI
+    /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/2$/, // invalid tokenURI
+  ];
+
   private worker: ExtractionWorkerHandler;
   private config: Config;
 
@@ -30,6 +35,17 @@ export default class MintSongsV2 implements Strategy {
   }
 
   crawl = async (nft: NFT) => {
+    if (
+      MintSongsV2.invalidIDs.filter((id) =>
+        `${nft.erc721.address}/${nft.erc721.token.id}`.match(id),
+      ).length != 0
+    ) {
+      console.log(
+        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`,
+      );
+      return null;
+    }
+
     nft.erc721.token.uri = await callTokenUri(
       this.worker,
       this.config,
