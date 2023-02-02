@@ -12,9 +12,19 @@ export default class SoundProtocol implements Strategy {
   public static createdAtBlock = 15570834;
   public static deprecatedAtBlock = null;
   public static invalidIDs = [
+    /^0x55ba34d4f0283d1ad0d09502a5b8c1b8886ee724\/1$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/3$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/2$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/1$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/2$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/1$/,
+    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/4$/,
+    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/3$/,
+    /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/1$/, // invalid tokenURI
+    /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/2$/, // invalid tokenURI
     /^0xdf4f25cd13567a74572063dcf15f101c22be1af0\/321$/, // invalid tokenURI
     /^0x9f396644ec4b2a2bc3c6cf665d29165dde0e83f1\/\d+$/, // tokenURI is not properly formatted and is not Arweave
-    /^0xd80e33b9a9276458bf3b115e3d7924ea3663bb84\/\d+$/, // tokenURI is not properly formatted 
+    /^0xd80e33b9a9276458bf3b115e3d7924ea3663bb84\/\d+$/, // tokenURI is not properly formatted
     /^0x81c8c35fcb7ac4803812106c594b40c716a260d2\/\d+$/, // tokenURI is not properly formatted
   ];
   private worker: ExtractionWorkerHandler;
