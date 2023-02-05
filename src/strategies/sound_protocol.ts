@@ -127,7 +127,7 @@ export default class SoundProtocol implements Strategy {
       nft,
     );
 
-    if (nft.erc721.token.uri.includes("https://test.com")) {
+    if (!nft.erc721.token.uri.includes("ar://")) {
       console.log(
         `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because includes invalid tokenURI`,
       );

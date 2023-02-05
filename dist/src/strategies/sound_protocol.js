@@ -61,7 +61,7 @@ export default class SoundProtocol {
                 return null;
             }
             nft.erc721.token.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
-            if (nft.erc721.token.uri.includes("https://test.com")) {
+            if (!nft.erc721.token.uri.includes("ar://")) {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because includes invalid tokenURI`);
                 return null;
             }
