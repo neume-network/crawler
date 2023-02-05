@@ -75,12 +75,14 @@ export default async function (
           let nftExists = false;
 
           try {
-            nftExists = !!(await db.getOne({
-              chainId: CHAIN_ID,
-              address: nft.erc721.address,
-              tokenId: nft.erc721.token.id,
-              blockNumber: nft.erc721.blockNumber,
-            }));
+            nftExists = !!(await db.level.get(
+              db.datumToKey({
+                chainId: CHAIN_ID,
+                address: nft.erc721.address,
+                tokenId: nft.erc721.token.id,
+                blockNumber: nft.erc721.blockNumber,
+              }),
+            ));
           } catch (err: any) {
             if (err.code !== "LEVEL_NOT_FOUND") throw err;
           }
