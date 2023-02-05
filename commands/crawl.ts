@@ -5,12 +5,11 @@ import { db } from "../database/index.js";
 import { JsonRpcLog, NFT, Config, Contracts } from "../src/types.js";
 import { getAllContracts, randomItem } from "../src/utils.js";
 import { Strategy } from "../src/strategies/strategy.types.js";
-import { Track, Transaction } from "@neume-network/schema";
+import { Track } from "@neume-network/schema";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-const FROM_EVENT_SELECTOR =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
+const FROM_EVENT_SELECTOR = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const CHAIN_ID = "1";
 
 export default async function (
@@ -18,17 +17,14 @@ export default async function (
   to: number,
   recrawl: boolean,
   config: Config,
-  _strategies: typeof Strategy[]
+  _strategies: typeof Strategy[],
 ) {
   const allContracts = await getAllContracts();
-  const contracts = Object.entries(allContracts).reduce(
-    (prevValue, [addr, info]) => {
-      if (_strategies.filter((s) => s.name === info.name).length)
-        prevValue = { ...prevValue, ...{ [addr]: info } };
-      return prevValue;
-    },
-    {} as Contracts
-  );
+  const contracts = Object.entries(allContracts).reduce((prevValue, [addr, info]) => {
+    if (_strategies.filter((s) => s.name === info.name).length)
+      prevValue = { ...prevValue, ...{ [addr]: info } };
+    return prevValue;
+  }, {} as Contracts);
   const worker = ExtractionWorker(config.worker);
   const strategies = _strategies.map((s) => new s(worker, config));
 
@@ -37,15 +33,8 @@ export default async function (
     const toBlock = Math.min(to, i + config.step.block);
     console.log("Crawling from", fromBlock, "to", toBlock);
 
-    for (
-      let j = 0;
-      j < Object.keys(contracts).length;
-      j += config.step.contract
-    ) {
-      const contractsSlice = Object.keys(contracts).slice(
-        j,
-        j + config.step.contract
-      );
+    for (let j = 0; j < Object.keys(contracts).length; j += config.step.contract) {
+      const contractsSlice = Object.keys(contracts).slice(j, j + config.step.contract);
       const rpcHost = randomItem(config.rpc);
 
       const msg = await worker({
@@ -90,7 +79,7 @@ export default async function (
               chainId: CHAIN_ID,
               address: nft.erc721.address,
               tokenId: nft.erc721.token.id,
-              blockNumber: nft.erc721.blockNumber.toString(),
+              blockNumber: nft.erc721.blockNumber,
             }));
           } catch (err: any) {
             if (err.code !== "LEVEL_NOT_FOUND") throw err;
@@ -98,13 +87,11 @@ export default async function (
 
           if (!recrawl && nftExists) return;
 
-          const strategy = strategies.find(
-            (s) => s.constructor.name === nft.platform.name
-          );
+          const strategy = strategies.find((s) => s.constructor.name === nft.platform.name);
 
           if (!strategy) {
             throw new Error(
-              `Couldn't find any strategy with the name of ${nft.platform.name} for address ${nft.erc721.address}`
+              `Couldn't find any strategy with the name of ${nft.platform.name} for address ${nft.erc721.address}`,
             );
           }
 
@@ -113,11 +100,7 @@ export default async function (
             try {
               track = await strategy?.crawl(nft);
             } catch (err) {
-              console.error(
-                `Error occurured while crawling\n`,
-                err,
-                JSON.stringify(nft, null, 2)
-              );
+              console.error(`Error occurured while crawling\n`, err, JSON.stringify(nft, null, 2));
               throw err; // Re-throwing to stop the application
             }
 
@@ -127,9 +110,9 @@ export default async function (
                   chainId: CHAIN_ID,
                   address: nft.erc721.address,
                   tokenId: nft.erc721.token.id,
-                  blockNumber: nft.erc721.blockNumber.toString(),
+                  blockNumber: nft.erc721.blockNumber,
                 },
-                track
+                track,
               );
 
               console.log(
@@ -138,7 +121,7 @@ export default async function (
                 track?.platform.version,
                 track?.platform.name,
                 "at",
-                track?.erc721.createdAt
+                track?.erc721.createdAt,
               );
             }
           } else {
@@ -151,7 +134,7 @@ export default async function (
                   chainId: CHAIN_ID,
                   address: nft.erc721.address,
                   tokenId: nft.erc721.token.id,
-                  blockNumber: (nft.erc721.blockNumber - 1).toString(),
+                  blockNumber: nft.erc721.blockNumber - 1,
                 })
               ).value;
             } catch (err: any) {
@@ -175,9 +158,9 @@ export default async function (
                   chainId: CHAIN_ID,
                   address: nft.erc721.address,
                   tokenId: nft.erc721.token.id,
-                  blockNumber: nft.erc721.blockNumber.toString(),
+                  blockNumber: nft.erc721.blockNumber,
                 },
-                track
+                track,
               );
 
               console.log(
@@ -190,11 +173,11 @@ export default async function (
                 "from",
                 nft.erc721.transaction.from,
                 "to",
-                nft.erc721.transaction.to
+                nft.erc721.transaction.to,
               );
             }
           }
-        })
+        }),
       );
     }
   }
@@ -204,9 +187,7 @@ export default async function (
 
 function prepareNFT(contracts: Contracts, log: JsonRpcLog): NFT {
   if (!log.topics[3] || !log.transactionHash || !log.blockNumber) {
-    throw new Error(
-      `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`
-    );
+    throw new Error(`log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`);
   }
 
   const decodedTopics = decodeLog(
@@ -216,7 +197,7 @@ function prepareNFT(contracts: Contracts, log: JsonRpcLog): NFT {
       { indexed: true, name: "tokenId", type: "uint256" },
     ],
     log.data,
-    log.topics.slice(1)
+    log.topics.slice(1),
   );
 
   return {

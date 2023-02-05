@@ -71,7 +71,7 @@ export const daemonJsonrpcSchema = {
                     "minItems": 2,
                     "maxItems": 2,
                     "items": {
-                        "type": "string"
+                        "type": "number"
                     }
                 }
             },

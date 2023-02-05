@@ -7,32 +7,41 @@ const chainId = "1";
 
 test.serial("should be able insert values", async (t) => {
   await t.notThrowsAsync(async () =>
-    db.insert({ chainId, address: "0x13", tokenId: "5", blockNumber: "95" }, { test: "data" }),
+    db.insert({ chainId, address: "0x13", tokenId: "5", blockNumber: 95 }, { test: "data" }),
   );
 });
 
 test.serial("should be able to delete values by id", async (t) => {
   await t.notThrowsAsync(async () =>
-    db.del({ chainId, address: "0x13", tokenId: "5", blockNumber: "95" }),
+    db.del({ chainId, address: "0x13", tokenId: "5", blockNumber: 95 }),
   );
 });
 
 test.serial("should be able to get values by id", async (t) => {
-  const datum = { chainId, address: "0x9b", tokenId: "2", blockNumber: "110" };
+  const datum = { chainId, address: "0x9b", tokenId: "2", blockNumber: 110 };
   const value = { test: "data" };
   await db.insert(datum, value);
   const ret = await db.getOne(datum);
-  const ids = await db.getIdsChanged("110");
+  const ids = await db.getIdsChanged(110);
   t.deepEqual(ret.id, datum);
   t.deepEqual(ret.value, value);
-  t.deepEqual(ids, [db.datumToKey(datum)]);
+  t.deepEqual(ids, [datum]);
 });
 
 test.serial("should throw error if no value with given address and token id", async (t) => {
-  await db.insert({ chainId, address: "0x9b", tokenId: "2", blockNumber: "110" }, { test: "data" });
+  await db.insert({ chainId, address: "0x9b", tokenId: "2", blockNumber: 110 }, { test: "data" });
   await t.throwsAsync(async () => db.getOne({ chainId, address: "0xab", tokenId: "0" }), {
     code: "LEVEL_NOT_FOUND",
   });
+});
+
+test.serial("getOne should get the closest value", async (t) => {
+  const datum = { chainId, address: "0x9b", tokenId: "2", blockNumber: 110 };
+  const value = { test: "data" };
+  await db.insert(datum, value);
+  const ret = await db.getOne({ chainId, address: "0x9b", tokenId: "2", blockNumber: 111 });
+  t.deepEqual(ret.id, datum);
+  t.deepEqual(ret.value, value);
 });
 
 test.serial(
@@ -40,11 +49,11 @@ test.serial(
   async (t) => {
     const values = [
       {
-        id: { chainId, address: "0x01", tokenId: "1", blockNumber: "100" },
+        id: { chainId, address: "0x01", tokenId: "1", blockNumber: 9 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address: "0x01", tokenId: "1", blockNumber: "101" },
+        id: { chainId, address: "0x01", tokenId: "1", blockNumber: 10 },
         value: { test: "updated-data" },
       },
     ];
@@ -60,23 +69,23 @@ test.serial("provided with only chainId and address should get all tokenIds", as
   const address = "0xb8";
   const values = [
     {
-      id: { chainId, address, tokenId: "1", blockNumber: "110" },
+      id: { chainId, address, tokenId: "1", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address, tokenId: "2", blockNumber: "110" },
+      id: { chainId, address, tokenId: "2", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address, tokenId: "2", blockNumber: "120" },
+      id: { chainId, address, tokenId: "2", blockNumber: 120 },
       value: { test: "updated-data" },
     },
     {
-      id: { chainId, address, tokenId: "3", blockNumber: "130" },
+      id: { chainId, address, tokenId: "3", blockNumber: 130 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xc8", tokenId: "3", blockNumber: "110" },
+      id: { chainId, address: "0xc8", tokenId: "3", blockNumber: 110 },
       value: { test: "data" },
     },
   ];
@@ -95,23 +104,23 @@ test.serial(
     const address = "0xb8";
     const values = [
       {
-        id: { chainId, address, tokenId: "1", blockNumber: "110" },
+        id: { chainId, address, tokenId: "1", blockNumber: 110 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address, tokenId: "2", blockNumber: "110" },
+        id: { chainId, address, tokenId: "2", blockNumber: 110 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address, tokenId: "2", blockNumber: "120" },
+        id: { chainId, address, tokenId: "2", blockNumber: 120 },
         value: { test: "updated-data" },
       },
       {
-        id: { chainId, address, tokenId: "3", blockNumber: "130" },
+        id: { chainId, address, tokenId: "3", blockNumber: 130 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address: "0xc8", tokenId: "3", blockNumber: "110" },
+        id: { chainId, address: "0xc8", tokenId: "3", blockNumber: 110 },
         value: { test: "data" },
       },
     ];
@@ -121,7 +130,7 @@ test.serial(
     for await (const r of db.getMany({
       chainId,
       address,
-      blockNumber: "110",
+      blockNumber: 110,
     })) {
       ret.push(r);
     }
@@ -132,19 +141,19 @@ test.serial(
 test.serial("provided with only chainId should get all tokenIds", async (t) => {
   const values = [
     {
-      id: { chainId, address: "0xb8", tokenId: "1", blockNumber: "110" },
+      id: { chainId, address: "0xb8", tokenId: "1", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xb9", tokenId: "2", blockNumber: "110" },
+      id: { chainId, address: "0xb9", tokenId: "2", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xb9", tokenId: "2", blockNumber: "120" },
+      id: { chainId, address: "0xb9", tokenId: "2", blockNumber: 120 },
       value: { test: "updated-data" },
     },
     {
-      id: { chainId, address: "0xc8", tokenId: "3", blockNumber: "130" },
+      id: { chainId, address: "0xc8", tokenId: "3", blockNumber: 130 },
       value: { test: "data" },
     },
   ];
@@ -162,26 +171,26 @@ test.serial(
   async (t) => {
     const values = [
       {
-        id: { chainId, address: "0xb8", tokenId: "1", blockNumber: "110" },
+        id: { chainId, address: "0xb8", tokenId: "1", blockNumber: 110 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address: "0xb9", tokenId: "2", blockNumber: "110" },
+        id: { chainId, address: "0xb9", tokenId: "2", blockNumber: 110 },
         value: { test: "data" },
       },
       {
-        id: { chainId, address: "0xb9", tokenId: "2", blockNumber: "120" },
+        id: { chainId, address: "0xb9", tokenId: "2", blockNumber: 120 },
         value: { test: "updated-data" },
       },
       {
-        id: { chainId, address: "0xc8", tokenId: "3", blockNumber: "130" },
+        id: { chainId, address: "0xc8", tokenId: "3", blockNumber: 130 },
         value: { test: "data" },
       },
     ];
 
     await Promise.all(values.map((v) => db.insert(v.id, v.value)));
     const ret = [];
-    for await (const r of db.getMany({ chainId, blockNumber: "110" })) {
+    for await (const r of db.getMany({ chainId, blockNumber: 110 })) {
       ret.push(r);
     }
     t.deepEqual(ret, [values[0], values[1]]);
@@ -191,11 +200,11 @@ test.serial(
 test.serial("should rewrite data if id is same", async (t) => {
   const values = [
     {
-      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: 110 },
       value: { test: "updated-data" },
     },
   ];
@@ -207,68 +216,64 @@ test.serial("should rewrite data if id is same", async (t) => {
 });
 
 test.serial("should get empty array if no ids have been changed", async (t) => {
-  const ids = await db.getIdsChanged("110", "115");
+  const ids = await db.getIdsChanged(110, 115);
   t.deepEqual(ids, []);
 });
 
 test.serial("should get all changed ids given a block range", async (t) => {
   const values = [
     {
-      id: { chainId, address: "0xa0", tokenId: "0", blockNumber: "105" },
+      id: { chainId, address: "0xa0", tokenId: "0", blockNumber: 105 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: 110 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: "110" },
+      id: { chainId, address: "0xa0", tokenId: "1", blockNumber: 110 },
       value: { test: "updated-data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: "115" },
+      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: 115 },
       value: { test: "data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: "120" },
+      id: { chainId, address: "0xa0", tokenId: "2", blockNumber: 120 },
       value: { test: "updated-data" },
     },
     {
-      id: { chainId, address: "0xa0", tokenId: "0", blockNumber: "11" },
+      id: { chainId, address: "0xa0", tokenId: "0", blockNumber: 11 },
       value: { test: "data" },
     },
   ];
   await Promise.all(values.map((v) => db.insert(v.id, v.value)));
 
-  let ids = await db.getIdsChanged("110", "115");
-  let returnValues = await db.getIdsChanged_fill("110", "115");
-  t.deepEqual(ids, [db.datumToKey(values[2].id), db.datumToKey(values[3].id)]);
+  let ids = await db.getIdsChanged(110, 115);
+  let returnValues = await db.getIdsChanged_fill(110, 115);
+  t.deepEqual(ids, [values[2].id, values[3].id]);
   t.deepEqual(returnValues, [values[2], values[3]]);
 
-  ids = await db.getIdsChanged("105", "115");
-  returnValues = await db.getIdsChanged_fill("105", "115");
-  t.deepEqual(ids, [
-    db.datumToKey(values[0].id),
-    db.datumToKey(values[2].id),
-    db.datumToKey(values[3].id),
-  ]);
+  ids = await db.getIdsChanged(105, 115);
+  returnValues = await db.getIdsChanged_fill(105, 115);
+  t.deepEqual(ids, [values[0].id, values[2].id, values[3].id]);
   t.deepEqual(returnValues, [values[0], values[2], values[3]]);
 
-  ids = await db.getIdsChanged("115");
-  returnValues = await db.getIdsChanged_fill("115");
-  t.deepEqual(ids, [db.datumToKey(values[3].id)]);
+  ids = await db.getIdsChanged(115);
+  returnValues = await db.getIdsChanged_fill(115);
+  t.deepEqual(ids, [values[3].id]);
   t.deepEqual(returnValues, [values[3]]);
 
   await db.del(values[2].id);
-  ids = await db.getIdsChanged("105", "115");
-  returnValues = await db.getIdsChanged_fill("105", "115");
-  t.deepEqual(ids, [db.datumToKey(values[0].id), db.datumToKey(values[3].id)]);
+  ids = await db.getIdsChanged(105, 115);
+  returnValues = await db.getIdsChanged_fill(105, 115);
+  t.deepEqual(ids, [values[0].id, values[3].id]);
   t.deepEqual(returnValues, [values[0], values[3]]);
 
   await db.del(values[3].id);
-  ids = await db.getIdsChanged("105", "120");
-  returnValues = await db.getIdsChanged_fill("105", "120");
-  t.deepEqual(ids, [db.datumToKey(values[0].id), db.datumToKey(values[4].id)]);
+  ids = await db.getIdsChanged(105, 120);
+  returnValues = await db.getIdsChanged_fill(105, 120);
+  t.deepEqual(ids, [values[0].id, values[4].id]);
   t.deepEqual(returnValues, [values[0], values[4]]);
 });
 

@@ -16,7 +16,7 @@ export interface GetIdsChangedFill {
    * @minItems 2
    * @maxItems 2
    */
-  params: [string, string];
+  params: [number, number];
   [k: string]: unknown;
 }
 export interface GetUserContracts {

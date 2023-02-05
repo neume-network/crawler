@@ -56,8 +56,8 @@ export default async function (from: number | undefined, to: number, url: string
   for (let syncedTill = syncFrom; syncedTill <= to; syncedTill += 5000) {
     console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
     const returnValues = (await client.request("getIdsChanged_fill", [
-      syncedTill.toString(),
-      (syncedTill + 5000).toString(),
+      syncedTill,
+      syncedTill + 5000,
     ])) as ReturnValue[];
 
     await Promise.all(

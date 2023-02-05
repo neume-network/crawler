@@ -12,7 +12,7 @@ export default async function dump(at) {
     try {
         for await (const { id, value } of db.getMany({
             chainId: "1",
-            blockNumber: at.toString(),
+            blockNumber: at,
         })) {
             const track = canonicalize(value);
             const outputPath = path.resolve(DIR, `${id.chainId}/${id.address}/${id.tokenId}`);

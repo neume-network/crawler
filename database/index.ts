@@ -6,7 +6,7 @@ export type Datum = {
   chainId: string;
   address: string;
   tokenId: string;
-  blockNumber: string;
+  blockNumber: number;
 };
 
 export type ReturnValue = {
@@ -29,12 +29,13 @@ export class DB {
 
   datumToKey(datum: Partial<Datum>) {
     // prettier-ignore
-    return `${datum.chainId || ''}/${datum.address || ''}/${datum.tokenId || ''}/${datum.blockNumber || ''}`;
+    const blockNumber = datum.blockNumber ? this.encodeNumber(datum.blockNumber) : ''
+    return `${datum.chainId || ""}/${datum.address || ""}/${datum.tokenId || ""}/${blockNumber}`;
   }
 
   keyToDatum(id: string) {
     const [chainId, address, tokenId, blockNumber] = id.split("/");
-    return { chainId, address, tokenId, blockNumber };
+    return { chainId, address, tokenId, blockNumber: Number(blockNumber) };
   }
 
   datumToChangeKey(datum: Datum) {
@@ -53,11 +54,11 @@ export class DB {
   // The above solution will only work for postive numbers and
   // will break for numbers greater than maximum digits. In the
   // above example, the solution will break for numbers greater than 100.
-  encodeNumber(num: string) {
+  encodeNumber(num: Number) {
     const MAX_LENGTH = 10;
-    if (num.length > MAX_LENGTH)
+    if (num.toString().length > MAX_LENGTH)
       throw new Error(`Database cannot encode number greater than 10 digits`);
-    return num.padStart(MAX_LENGTH, "0");
+    return num.toString().padStart(MAX_LENGTH, "0");
   }
 
   decodeNumber(num: string) {
@@ -67,12 +68,12 @@ export class DB {
   getMany(datum: {
     chainId: string;
     address: string;
-    blockNumber?: string;
+    blockNumber?: number;
   }): AsyncGenerator<ReturnValue>;
-  getMany(datum: { chainId: string; blockNumber?: string }): AsyncGenerator<ReturnValue>;
+  getMany(datum: { chainId: string; blockNumber?: number }): AsyncGenerator<ReturnValue>;
   async *getMany(datum: Partial<Datum>): AsyncGenerator<ReturnValue> {
     const { chainId, address, tokenId, blockNumber } = datum;
-    const tillBlockNumber = blockNumber || String(Number.MAX_SAFE_INTEGER);
+    const tillBlockNumber = blockNumber || Number.MAX_SAFE_INTEGER;
     const filter = address
       ? {
           gte: `${chainId}/${address}/`,
@@ -115,7 +116,7 @@ export class DB {
     if (chainId && address && tokenId && blockNumber) {
       for await (const [id, value] of this.level.iterator({
         gte: `${datum.chainId}/${datum.address}/${datum.tokenId}/`,
-        lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/${blockNumber}`,
+        lte: `${datum.chainId}/${datum.address}/${datum.tokenId}/${this.encodeNumber(blockNumber)}`,
         reverse: true,
         limit: 1,
       })) {
@@ -144,16 +145,16 @@ export class DB {
     );
   }
 
-  async getIdsChanged(from: string, to?: string): Promise<string[]> {
+  async getIdsChanged(from: number, to?: number): Promise<Datum[]> {
     to = to ?? from;
-    const ids = new Map();
+    const ids = new Map<string, Datum>();
 
     for await (const [_id, value] of this.changeIndex.iterator({
       gte: `${this.encodeNumber(from)}/`,
       lte: `${this.encodeNumber(to)}/~`,
     })) {
       const [blockNumber, chainId, address, tokenId] = _id.split("/");
-      const id = `${chainId}/${address}/${tokenId}/${this.decodeNumber(blockNumber)}`;
+      const id = { chainId, address, tokenId, blockNumber: Number(blockNumber) };
       const nid = `${chainId}/${address}/${tokenId}`;
       ids.set(nid, id);
     }
@@ -161,16 +162,16 @@ export class DB {
     return Array.from(ids, ([nid, id]) => id);
   }
 
-  async getIdsChanged_fill(from: string, to?: string): Promise<ReturnValue[]> {
+  async getIdsChanged_fill(from: number, to?: number): Promise<ReturnValue[]> {
     const idsChanged = await this.getIdsChanged(from, to);
 
     return Promise.all(
       idsChanged.map(async (id) => {
-        const value = await this.level.get(id);
+        const returnValue = await this.getOne(id);
 
         return {
-          id: this.keyToDatum(id),
-          value,
+          id: returnValue.id,
+          value: returnValue.value,
         };
       }),
     );

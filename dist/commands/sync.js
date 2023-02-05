@@ -44,8 +44,8 @@ export default async function (from, to, url, config) {
     for (let syncedTill = syncFrom; syncedTill <= to; syncedTill += 5000) {
         console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
         const returnValues = (await client.request("getIdsChanged_fill", [
-            syncedTill.toString(),
-            (syncedTill + 5000).toString(),
+            syncedTill,
+            syncedTill + 5000,
         ]));
         await Promise.all(returnValues.map(async (r) => {
             await db.insert(r.id, r.value);

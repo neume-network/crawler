@@ -57,7 +57,7 @@ export default async function (from, to, recrawl, config, _strategies) {
                         chainId: CHAIN_ID,
                         address: nft.erc721.address,
                         tokenId: nft.erc721.token.id,
-                        blockNumber: nft.erc721.blockNumber.toString(),
+                        blockNumber: nft.erc721.blockNumber,
                     }));
                 }
                 catch (err) {
@@ -84,7 +84,7 @@ export default async function (from, to, recrawl, config, _strategies) {
                             chainId: CHAIN_ID,
                             address: nft.erc721.address,
                             tokenId: nft.erc721.token.id,
-                            blockNumber: nft.erc721.blockNumber.toString(),
+                            blockNumber: nft.erc721.blockNumber,
                         }, track);
                         console.log("Found track:", track?.title, track?.platform.version, track?.platform.name, "at", track?.erc721.createdAt);
                     }
@@ -97,7 +97,7 @@ export default async function (from, to, recrawl, config, _strategies) {
                             chainId: CHAIN_ID,
                             address: nft.erc721.address,
                             tokenId: nft.erc721.token.id,
-                            blockNumber: (nft.erc721.blockNumber - 1).toString(),
+                            blockNumber: nft.erc721.blockNumber - 1,
                         })).value;
                     }
                     catch (err) {
@@ -118,7 +118,7 @@ export default async function (from, to, recrawl, config, _strategies) {
                             chainId: CHAIN_ID,
                             address: nft.erc721.address,
                             tokenId: nft.erc721.token.id,
-                            blockNumber: nft.erc721.blockNumber.toString(),
+                            blockNumber: nft.erc721.blockNumber,
                         }, track);
                         console.log("Update ownership of", track.title, track?.platform.name, track?.platform.version, "at", nft.erc721.blockNumber, "from", nft.erc721.transaction.from, "to", nft.erc721.transaction.to);
                     }
