@@ -119,7 +119,7 @@ export default class SoundProtocol {
     }
     updateOwner(nft) { }
 }
-SoundProtocol.version = "1.0.0";
+SoundProtocol.version = "2.0.0";
 SoundProtocol.createdAtBlock = 15570834;
 SoundProtocol.deprecatedAtBlock = null;
 SoundProtocol.invalidIDs = [

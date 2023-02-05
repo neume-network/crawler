@@ -8,7 +8,7 @@ import { Strategy } from "./strategy.types.js";
 import { randomItem } from "../utils.js";
 
 export default class SoundProtocol implements Strategy {
-  public static version = "1.0.0";
+  public static version = "2.0.0";
   public static createdAtBlock = 15570834;
   public static deprecatedAtBlock = null;
   public static invalidIDs = [
