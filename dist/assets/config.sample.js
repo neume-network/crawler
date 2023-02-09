@@ -38,10 +38,9 @@ export const config = {
   arweave: {
     httpsGateway: "https://arweave.net",
   },
-  step: {
-    block: 799,
-    contract: 100,
-  },
+  crawlStep: 5000,
+  getLogsBlockSpanSize: 799,
+  getLogsAddressSize: 100,
   breatheTimeMS: 900_000, // 15 mins
   worker: {
     queue: {

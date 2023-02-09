@@ -19,9 +19,9 @@ export default async function (
   const worker = ExtractionWorker(config.worker);
   const strategies = _strategies.map((s) => new s(worker, config));
 
-  for (let i = from; i <= to; i += config.step.block) {
+  for (let i = from; i <= to; i += config.getLogsBlockSpanSize) {
     const fromBlock = i;
-    const toBlock = Math.min(to, i + config.step.block);
+    const toBlock = Math.min(to, i + config.getLogsBlockSpanSize);
     console.log("Finding contracts from", fromBlock, toBlock);
 
     await Promise.all(

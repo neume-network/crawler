@@ -27,14 +27,19 @@ export type Config = {
     httpsGateway: string;
   };
   /**
-   * The steps to take while crawling. RPC endpoints can't be
-   * queried for the complete blockchain. They need to be
-   * queried in small blocks/segments.
+   * In order not to overwhelm the crawler we crawl in steps of block number.
    */
-  step: {
-    block: number;
-    contract: number;
-  };
+  crawlStep: number;
+  /**
+   * RPC endpoints will not fetch events for a large block span. getLogsBlockSpanSize
+   * is the maximum size limit enforced by the RPC endpoint.
+   */
+  getLogsBlockSpanSize: number;
+  /**
+   * RPC endpoints will not fetch events for a large number of contracts. getLogsAddressSize
+   * expresses the maximum size limit enforced by the RPC endpoint.
+   */
+  getLogsAddressSize: number;
   /**
    * The time to wait (in milliseconds) before starting the next
    * crawl cycle. If the crawler has not crawled up to the latest block
