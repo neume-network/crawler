@@ -67,52 +67,60 @@ export default class SoundProtocol {
             }
             nft.erc721.token.uriContent = await getArweaveTokenUri(nft.erc721.token.uri, this.worker, this.config);
             nft.creator = await callOwner(this.worker, this.config, nft.erc721.address, nft.erc721.blockNumber);
-            const datum = nft.erc721.token.uriContent;
-            return {
-                version: SoundProtocol.version,
-                title: datum.name,
-                artist: {
+            try {
+                const datum = nft.erc721.token.uriContent;
+                return {
                     version: SoundProtocol.version,
-                    name: datum.artist,
-                    address: nft.creator,
-                },
-                platform: {
-                    version: SoundProtocol.version,
-                    name: "Sound Protocol",
-                    uri: "https://sound.xyz",
-                },
-                erc721: {
-                    version: SoundProtocol.version,
-                    createdAt: nft.erc721.blockNumber,
-                    transaction: {
-                        from: nft.erc721.transaction.from,
-                        to: nft.erc721.transaction.to,
-                        blockNumber: nft.erc721.transaction.blockNumber,
-                        transactionHash: nft.erc721.transaction.transactionHash,
-                    },
-                    address: nft.erc721.address,
-                    tokenId: nft.erc721.token.id,
-                    tokenURI: nft.erc721.token.uri,
-                    metadata: {
-                        ...datum,
-                        name: datum.name,
-                        description: datum.description,
-                        image: datum.image,
-                    },
-                },
-                manifestations: [
-                    {
+                    title: datum.name,
+                    artist: {
                         version: SoundProtocol.version,
-                        uri: datum.losslessAudio,
-                        mimetype: "audio",
+                        name: datum.artist,
+                        address: nft.creator,
                     },
-                    {
+                    platform: {
                         version: SoundProtocol.version,
-                        uri: datum.image,
-                        mimetype: "image",
+                        name: "Sound Protocol",
+                        uri: "https://sound.xyz",
                     },
-                ],
-            };
+                    erc721: {
+                        version: SoundProtocol.version,
+                        createdAt: nft.erc721.blockNumber,
+                        transaction: {
+                            from: nft.erc721.transaction.from,
+                            to: nft.erc721.transaction.to,
+                            blockNumber: nft.erc721.transaction.blockNumber,
+                            transactionHash: nft.erc721.transaction.transactionHash,
+                        },
+                        address: nft.erc721.address,
+                        tokenId: nft.erc721.token.id,
+                        tokenURI: nft.erc721.token.uri,
+                        metadata: {
+                            ...datum,
+                            name: datum.name,
+                            description: datum.description,
+                            image: datum.image,
+                        },
+                    },
+                    manifestations: [
+                        {
+                            version: SoundProtocol.version,
+                            uri: datum.losslessAudio,
+                            mimetype: "audio",
+                        },
+                        {
+                            version: SoundProtocol.version,
+                            uri: datum.image,
+                            mimetype: "image",
+                        },
+                    ],
+                };
+            }
+            catch {
+                // Failed to transform the track. Most probably the metadata is
+                // incorrectly formatted. Ignoring the track.
+                console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because of incorrect metadata`);
+                return null;
+            }
         };
         this.worker = worker;
         this.config = config;
@@ -122,24 +130,4 @@ export default class SoundProtocol {
 SoundProtocol.version = "2.0.0";
 SoundProtocol.createdAtBlock = 15570834;
 SoundProtocol.deprecatedAtBlock = null;
-SoundProtocol.invalidIDs = [
-    /^0x55ba34d4f0283d1ad0d09502a5b8c1b8886ee724\/1$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/3$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/2$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/1$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/2$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/1$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/4$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/3$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/4$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/5$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/5$/,
-    /^0x3f4ef39f0e6bf344f7c503095c877deb32dad055\/6$/,
-    /^0x92e44e151508b21eb1a03244f0ddf1a59deb160f\/6$/,
-    /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/1$/,
-    /^0x11b4e83bc3e9605f03e2a4c34bd09567be5aebbe\/2$/,
-    /^0xdf4f25cd13567a74572063dcf15f101c22be1af0\/321$/,
-    /^0x9f396644ec4b2a2bc3c6cf665d29165dde0e83f1\/\d+$/,
-    /^0xd80e33b9a9276458bf3b115e3d7924ea3663bb84\/\d+$/,
-    /^0x81c8c35fcb7ac4803812106c594b40c716a260d2\/\d+$/, // tokenURI is not properly formatted
-];
+SoundProtocol.invalidIDs = [];
