@@ -13,6 +13,7 @@ import init from "./commands/init.js";
 import { db } from "./database/index.js";
 const argv = yargs(hideBin(process.argv))
     .usage("Usage: $0 <command> <options>")
+    .env("NEUME")
     .command("crawl", "Find new NFTs from the list of already known contracts", {
     from: {
         type: "number",
