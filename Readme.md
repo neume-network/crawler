@@ -11,6 +11,7 @@ The vision of neume is to index all web3 music activity and make it public. You 
 </p>
 
 **Table of Contents**
+
 - [Neume Crawler](#neume-crawler)
   - [How to consume the indexed data?](#how-to-consume-the-indexed-data)
     - [Mental Model](#mental-model)
@@ -36,7 +37,6 @@ The vision of neume is to index all web3 music activity and make it public. You 
   - [Architecture Overview](#architecture-overview)
     - [Pseudocode for crawl command](#pseudocode-for-crawl-command)
 
-
 ## How to consume the indexed data?
 
 The neume daemon exposes JSON-RPC methods to consume data.
@@ -54,8 +54,10 @@ neume saves each NFT (type [NFT]()) which includes information such as its token
 Let's suppose a new NFT was minted at block number 16572314.
 
 ```js
-getIdsChanged_fill(16572314, 16572314)[
-  /* Result */
+getIdsChanged_fill(16572314, 16572314)
+
+/* Result */
+[
   {
     id: {
       chainId: "1",
@@ -143,15 +145,17 @@ getIdsChanged_fill(16572314, 16572314)[
         },
       ],
     },
-  }
+  },
 ];
 ```
 
 If the NFT was transfered at block number 16572315 from `0x7Dd7fd8ACd39e557A6c570965eeA2b4008c4Dd1c` to `0x076D520333b2163C51897FAC8939a3606e5b4a95` we will get the following result.
 
 ```js
-getIdsChanged_fill(16572314, 16572314)[
-  /* Result */
+getIdsChanged_fill(16572314, 16572314)
+
+/* Result */
+[
   {
     id: {
       chainId: "1",
@@ -240,7 +244,7 @@ getIdsChanged_fill(16572314, 16572314)[
         },
       ],
     },
-  }
+  },
 ];
 ```
 
