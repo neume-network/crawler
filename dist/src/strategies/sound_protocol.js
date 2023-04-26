@@ -65,7 +65,16 @@ export default class SoundProtocol {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because includes invalid tokenURI`);
                 return null;
             }
-            nft.erc721.token.uriContent = await getArweaveTokenUri(nft.erc721.token.uri, this.worker, this.config);
+            try {
+                nft.erc721.token.uriContent = await getArweaveTokenUri(nft.erc721.token.uri, this.worker, this.config);
+            }
+            catch (err) {
+                if (err.message.includes("status: 4")) {
+                    // we are getting 4XX. which probably means the URI is incorrect. best to ignore the track.
+                    return null;
+                }
+                throw err;
+            }
             nft.creator = await callOwner(this.worker, this.config, nft.erc721.address, nft.erc721.blockNumber);
             try {
                 const datum = nft.erc721.token.uriContent;
