@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+//@ts-nocheck
+
 import "dotenv/config";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -13,10 +15,26 @@ import daemon from "./commands/daemon.js";
 import sync from "./commands/sync.js";
 import init from "./commands/init.js";
 import { db } from "./database/index.js";
+import runMigration from "./database/runMigration.js";
 
 const argv = yargs(hideBin(process.argv))
   .usage("Usage: $0 <command> <options>")
   .env("NEUME")
+  .command(
+    "runMigration",
+    "Run migrations on the database",
+    {
+      type: {
+        type: "string",
+        describe: "Up or Down?",
+        demandOption: true,
+        choices: ["up", "down"],
+      },
+    },
+    async (argv) => {
+      await runMigration(argv.type);
+    },
+  )
   .command(
     "crawl",
     "Find new NFTs from the list of already known contracts",
@@ -143,6 +161,7 @@ const argv = yargs(hideBin(process.argv))
     async (argv) => {
       const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
       const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
+      // @ts-ignore
       await sync(argv.from, to, argv.url, config);
       process.exit(0);
     },
