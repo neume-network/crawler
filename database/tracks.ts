@@ -33,7 +33,7 @@ export class Tracks {
     return Boolean(rows.length);
   };
 
-  upsertTrack = async (track: Track, blockNumber: number) => {
+  upsertTrack = async (track: Track, timestamp: number = Date.now()) => {
     this.db.transaction(async (trx) => {
       await trx("tracks")
         .insert({
@@ -51,7 +51,7 @@ export class Tracks {
           erc721_metadata: track.erc721.metadata,
           erc721_uri: track.erc721.uri,
           uid: track.uid,
-          lastUpdatedAt: blockNumber,
+          lastUpdatedAt: timestamp,
         })
         .onConflict(["uid"])
         .merge();
@@ -102,10 +102,10 @@ export class Tracks {
         }),
       );
 
-      const inputs = [track, blockNumber];
+      const inputs = [track, timestamp];
 
       await this.log.put(
-        `${track.platform.name}/${this.encodeNumber(blockNumber)}/${hashCode(
+        `${track.platform.name}/${this.encodeNumber(timestamp)}/${hashCode(
           JSON.stringify(inputs),
         )}`,
         {
@@ -121,10 +121,10 @@ export class Tracks {
     tokenId: string,
     owner: Owner,
     platform: string,
-    blockNumber: number,
+    timestamp: number = Date.now(),
   ) => {
-    const inputs = [uid, tokenId, owner, blockNumber];
-    await this.db("tracks").update({ lastUpdatedAt: blockNumber }).where("uid", "=", uid);
+    const inputs = [uid, tokenId, owner, timestamp];
+    await this.db("tracks").update({ lastUpdatedAt: timestamp }).where("uid", "=", uid);
 
     await this.db("owners")
       .insert({
@@ -140,7 +140,7 @@ export class Tracks {
       .merge();
 
     await this.log.put(
-      `${platform}/${this.encodeNumber(blockNumber)}/${hashCode(JSON.stringify(inputs))}`,
+      `${platform}/${this.encodeNumber(timestamp)}/${hashCode(JSON.stringify(inputs))}`,
       {
         operation: "upsertOwner",
         inputs,
@@ -253,7 +253,7 @@ export class Tracks {
   // will break for numbers greater than maximum digits. In the
   // above example, the solution will break for numbers greater than 100.
   encodeNumber(num: Number) {
-    const MAX_LENGTH = 10; // TODO: increase this number for polygon
+    const MAX_LENGTH = 20;
     if (num.toString().length > MAX_LENGTH)
       throw new Error(`Database cannot encode number greater than 10 digits`);
     return num.toString().padStart(MAX_LENGTH, "0");
