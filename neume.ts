@@ -7,12 +7,12 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import path from "path";
 
-import crawl from "./commands/crawl.js";
-import dump from "./commands/dump.js";
-import filterContracts from "./commands/filter_contracts.js";
+// import crawl from "./commands/crawl.js";
+// import dump from "./commands/dump.js";
+// import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./src/utils.js";
 import daemon from "./commands/daemon.js";
-import sync from "./commands/sync.js";
+// import sync from "./commands/sync.js";
 import init from "./commands/init.js";
 import { db } from "./database/index.js";
 import runMigration from "./database/runMigration.js";
@@ -37,7 +37,7 @@ const argv = yargs(hideBin(process.argv))
   )
   .command(
     "crawl",
-    "Find new NFTs from the list of already known contracts",
+    "Find new NFTs from the list of already known contracts [Out of date]",
     {
       from: {
         type: "number",
@@ -64,7 +64,7 @@ const argv = yargs(hideBin(process.argv))
   )
   .command(
     "filter-contracts",
-    "Find new contracts",
+    "Find new contracts [Out of date]",
     {
       from: {
         type: "number",
@@ -91,7 +91,7 @@ const argv = yargs(hideBin(process.argv))
   )
   .command(
     "dump",
-    "Export database as JSON",
+    "Export database as JSON [Out of date]",
     {
       at: {
         type: "number",
@@ -135,7 +135,7 @@ const argv = yargs(hideBin(process.argv))
     },
     async (argv) => {
       const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
-      await daemon(argv.from, argv.crawl, argv.recrawl, argv.port, config, strategyNames);
+      await daemon(argv.crawl, argv.recrawl, argv.port, config, strategyNames);
     },
   )
   .command(

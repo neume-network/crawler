@@ -1,0 +1,400 @@
+import ExtractionWorker, { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { Track } from "@neume-network/schema";
+import { toHex, decodeLog, encodeParameters, decodeParameters } from "eth-fun";
+
+import { CHAINS, Config, NFT, PROTOCOLS } from "../../types.js";
+import { Strategy } from "../strategy.types.js";
+import { getProtocol } from "../../utils.js";
+import { localStorage } from "../../../database/localstorage.js";
+import { getArweaveTokenUri } from "../../components/get-arweave-tokenuri.js";
+import { getIpfsTokenUri } from "../../components/get-ipfs-tokenuri.js";
+import { fetchTokenUri } from "../../components/fetch-tokenuri.js";
+import { ethGetLogs } from "../../components/eth-get-logs.js";
+import { AbstractSublevel } from "abstract-level";
+import { Level } from "level";
+import { tracksDB } from "../../../database/tracks.js";
+import { handleTransfer } from "../../components/handle-transfer.js";
+import { getAlias, getCollectNFT, getHandle } from "./components.js";
+
+// Post from Lens
+type Post = {
+  profileId: number;
+  pubId: number;
+  contentURI: string;
+  collectModule: string;
+  collectModuleReturnData: any;
+  referenceModule: string;
+  referenceModuleReturnData: any;
+  timestamp: number;
+  blockNumber: number;
+};
+
+export default class Lens implements Strategy {
+  public static version = "1.0.0";
+  public deprecatedAtBlock = null;
+  public createdAtBlock = 0;
+  public worker: ExtractionWorkerHandler;
+  public config: Config;
+  public chain = CHAINS.polygon;
+  public localStorage: AbstractSublevel<
+    Level<string, any>,
+    string | Buffer | Uint8Array,
+    string,
+    any
+  >;
+
+  public static LENS_HUB_ADDRESS = "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d";
+  public static POST_CREATED_EVENT_SELECTOR =
+    "0xc672c38b4d26c3c978228e99164105280410b144af24dd3ed8e4f9d211d96a50";
+  public static COLLECT_NFT_DEPLOYED =
+    "0x0b227b550ffed48af813b32e246f787e99581ee13206ba8f9d90d63615269b3f";
+  public static TRANSFER_EVENT_SELECTOR =
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+  // `${post.profileId}-${post.pubId}`
+  public static ignoredPosts = ["39133-682", "88863-16"];
+
+  /** Contracts where NFTs are published */
+  public contracts: AbstractSublevel<any, any, string, any>;
+  /** Lens protocol IDs to listen for contracts */
+  public trackedIds: AbstractSublevel<any, any, string, any>;
+  /** A mapping between NFT contract address and Lens ID */
+  public addressToId: AbstractSublevel<any, any, string, any>;
+
+  constructor(worker: ExtractionWorkerHandler, config: Config) {
+    this.worker = worker;
+    this.config = config;
+    this.localStorage = localStorage.sublevel<string, any>(Lens.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel<string, any>("contracts", {
+      valueEncoding: "json",
+    });
+    this.trackedIds = this.localStorage.sublevel<string, any>("trackedIds", {
+      valueEncoding: "json",
+    });
+    this.addressToId = this.localStorage.sublevel<string, any>("addressToId", {
+      valueEncoding: "json",
+    });
+  }
+
+  async crawl(from: number, to: number, recrawl: boolean) {
+    console.time(`handlePostCreated: ${from}-${to}`);
+    await this.handlePostCreated(from, to, recrawl);
+    console.timeEnd(`handlePostCreated: ${from}-${to}`);
+
+    console.time(`handleCollectNftDeployed: ${from}-${to}`);
+    await this.handleCollectNftDeployed(from, to, recrawl);
+    console.timeEnd(`handleCollectNftDeployed: ${from}-${to}`);
+
+    console.time(`handleTransfer: ${from}-${to}`);
+    await handleTransfer.call(this, from, to, recrawl);
+    console.timeEnd(`handleTransfer: ${from}-${to}`);
+  }
+
+  async handleCollectNftDeployed(from: number, to: number, recrawl: boolean) {
+    const promises = [];
+
+    const { getLogsBlockSpanSize, getLogsAddressSize } = this.config.chain[this.chain];
+    const MAX_TOPICS = getLogsAddressSize;
+
+    for (let i = from; i <= to; i += getLogsBlockSpanSize + 1) {
+      const fromBlock = i;
+      const toBlock = Math.min(to, i + getLogsBlockSpanSize);
+
+      const iter = this.trackedIds.iterator();
+      const pendingEnteries = [];
+
+      while (true) {
+        const entries: [string, any][] = [...pendingEnteries, ...(await iter.nextv(MAX_TOPICS))];
+
+        if (entries.length === 0) {
+          break;
+        }
+
+        // prepare topics filter. we have to take care of max topics.
+        const profileIds = new Set<string>();
+        const pubIds = new Set<string>();
+
+        for (let j = 0; j < entries.length; j++) {
+          const [profileId, pubId] = entries[j][0].split("-");
+
+          if (profileIds.size >= MAX_TOPICS - 1 || pubIds.size >= MAX_TOPICS - 1) {
+            pendingEnteries.push(entries[j]);
+          } else {
+            profileIds.add(profileId);
+            pubIds.add(pubId);
+          }
+        }
+
+        const promise = ethGetLogs
+          .call(
+            this,
+            fromBlock,
+            toBlock,
+            [
+              Lens.COLLECT_NFT_DEPLOYED,
+              Array.from(profileIds).map((i) => encodeParameters(["uint256"], [i])),
+              Array.from(pubIds).map((i) => encodeParameters(["uint256"], [i])),
+            ],
+            [Lens.LENS_HUB_ADDRESS],
+          )
+          .then(async (logs) => {
+            await Promise.all(
+              logs.map(async (log) => {
+                if (!log.transactionHash || !log.blockNumber) {
+                  throw new Error(
+                    `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`,
+                  );
+                }
+
+                const decodedTopics = decodeLog(
+                  [
+                    { indexed: true, name: "profileId", type: "uint256" },
+                    { indexed: true, name: "pubId", type: "uint256" },
+                    { indexed: true, name: "collectNFT", type: "address" },
+                    { indexed: false, name: "timestamp", type: "uint256" },
+                  ],
+                  log.data,
+                  log.topics.slice(1),
+                );
+
+                let { profileId, pubId, collectNFT } = decodedTopics;
+                collectNFT = collectNFT.toLowerCase();
+
+                console.log("found collect nft", collectNFT, profileId, pubId);
+
+                await this.contracts.put(collectNFT, {
+                  name: Lens.name,
+                  version: Lens.version,
+                });
+                await this.addressToId.put(collectNFT, `${this.chain}/${profileId}/${pubId}`);
+                await this.trackedIds.del(`${profileId}-${pubId}`);
+              }),
+            );
+          });
+
+        promises.push(promise);
+      }
+    }
+
+    await Promise.all(promises);
+  }
+
+  async handlePostCreated(from: number, to: number, recrawl: boolean) {
+    // We are searching for PostCreatedEvents and not directly for
+    // CollectedNFTDeployed event because a song maybe posted that
+    // does not have any collectors
+
+    const _handlePostCreated = async (from: number, to: number, recrawl: boolean) => {
+      const logs = await ethGetLogs.call(
+        this,
+        from,
+        to,
+        [Lens.POST_CREATED_EVENT_SELECTOR],
+        [Lens.LENS_HUB_ADDRESS],
+      );
+
+      const posts = (await Promise.all(
+        logs.map(async (log) => {
+          if (!log.transactionHash || !log.blockNumber) {
+            throw new Error(
+              `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`,
+            );
+          }
+
+          const decodedTopics = decodeLog(
+            [
+              { indexed: true, name: "profileId", type: "uint256" },
+              { indexed: true, name: "pubId", type: "uint256" },
+              { indexed: false, name: "contentURI", type: "string" },
+              { indexed: false, name: "collectModule", type: "address" },
+              { indexed: false, name: "collectModuleReturnData", type: "bytes" },
+              { indexed: false, name: "referenceModule", type: "address" },
+              { indexed: false, name: "referenceModuleReturnData", type: "bytes" },
+              { indexed: false, name: "timestamp", type: "uint256" },
+            ],
+            log.data,
+            log.topics.slice(1),
+          );
+
+          return {
+            profileId: parseInt(decodedTopics[0]),
+            pubId: parseInt(decodedTopics[1]),
+            contentURI: decodedTopics[2],
+            collectModule: decodedTopics[3],
+            collectModuleReturnData: decodedTopics[4],
+            referenceModule: decodedTopics[5],
+            referenceModuleReturnData: decodedTopics[6],
+            timestamp: parseInt(decodedTopics[7]),
+            blockNumber: parseInt(log.blockNumber),
+          };
+        }),
+      )) as Post[];
+
+      await Promise.all(
+        posts.map(async (post) => {
+          let track;
+          try {
+            if (
+              !recrawl &&
+              (await tracksDB.isTrackPresent(`${this.chain}/${post.profileId}/${post.pubId}`))
+            )
+              return;
+            track = await this.processPost(post);
+          } catch (err) {
+            console.log(post);
+            throw err;
+          }
+
+          if (track) {
+            await tracksDB.upsertTrack(track);
+            await this.trackedIds.put(`${post.profileId}-${post.pubId}`, 1);
+
+            console.dir(track, { depth: null });
+          }
+        }),
+      );
+    };
+
+    const { getLogsBlockSpanSize } = this.config.chain[this.chain];
+    const promises = [];
+    for (let i = from; i <= to; i += getLogsBlockSpanSize + 1) {
+      const fromBlock = i;
+      const toBlock = Math.min(to, i + getLogsBlockSpanSize);
+
+      promises.push(_handlePostCreated(fromBlock, toBlock, recrawl));
+    }
+
+    await Promise.all(promises);
+  }
+
+  // This is called when a new NFT is minted in Lens
+  fetchMetadata = async (nft: NFT): Promise<Track | null> => {
+    let uid;
+    try {
+      uid = await this.addressToId.get(nft.erc721.address);
+    } catch (err) {
+      console.log("Error for", nft);
+      throw err;
+    }
+    const track = await tracksDB.getTrack(uid);
+    const alias = await getAlias.call(this, nft);
+
+    track.erc721.tokens.push({
+      id: nft.erc721.token.id,
+      owners: [
+        {
+          from: nft.erc721.transaction.from,
+          to: nft.erc721.transaction.to,
+          blockNumber: nft.erc721.blockNumber,
+          transactionHash: nft.erc721.transaction.transactionHash,
+          alias: alias ?? undefined,
+        },
+      ],
+    });
+
+    return track;
+  };
+
+  async processPost(post: Post): Promise<Track | null> {
+    // console.log("Processing new post with contentURI", post.contentURI);
+    if (Lens.ignoredPosts.includes(`${post.profileId}-${post.pubId}`)) {
+      console.log("This post is ignored; skipping");
+      return null;
+    }
+
+    const protocol = getProtocol(post.contentURI);
+
+    let datum: Record<any, any>;
+    try {
+      if (protocol === PROTOCOLS.arweave) {
+        if (!/ar:\/\/[a-zA-Z0-9-_]{43}.*/.test(post.contentURI)) {
+          console.log(
+            `Ignoring post id: ${post.profileId}-${post.pubId} because the content URI is invalid:`,
+            post.contentURI,
+          );
+          return null;
+        }
+        datum = await getArweaveTokenUri(post.contentURI, this.worker, this.config);
+      } else if (protocol === PROTOCOLS.ipfs) {
+        datum = await getIpfsTokenUri(post.contentURI, this.worker, this.config);
+      } else if (protocol === PROTOCOLS.https) {
+        datum = await fetchTokenUri(post.contentURI, this.worker);
+      } else {
+        throw new Error(`Invalid Protocl for ${post.contentURI}`);
+      }
+    } catch (err: any) {
+      if (err.message.includes("status: 4") || err.message.includes("Invalid CID")) {
+        return null;
+      }
+      throw err;
+    }
+
+    if (!datum || !datum.media) {
+      // console.log("No media; skipping");
+      return null;
+    }
+
+    const media = datum.media.find((m: any) => m.type.includes("audio"));
+
+    if (!media) {
+      // console.log("No audio in media; skipping");
+      return null;
+    }
+
+    const collectNftAdsress = (
+      await getCollectNFT.call(this, post.profileId, post.pubId, post.blockNumber)
+    ).toLowerCase();
+
+    const artistHandle = await getHandle.call(this, post.profileId, post.blockNumber);
+
+    const track = {
+      version: Lens.version,
+      title: datum.name,
+      uid: `${this.chain}/${post.profileId}/${post.pubId}`,
+      artist: {
+        version: Lens.version,
+        name: artistHandle, // TODO: We can add profile's alias here
+        address: post.profileId.toString(),
+      },
+      platform: {
+        version: Lens.version,
+        name: Lens.name,
+        uri: "https://lens.xyz",
+      },
+      erc721: {
+        version: Lens.version,
+        address: collectNftAdsress,
+        tokens: [],
+        metadata: {
+          ...datum,
+          name: datum.name,
+          description: datum.content,
+          image: datum.image,
+        },
+      },
+      manifestations: [
+        {
+          version: Lens.version,
+          uri: media.item,
+          mimetype: "audio",
+        },
+      ],
+    };
+
+    // datum.image can be undefined
+    if (datum?.image)
+      track.manifestations.push({
+        version: Lens.version,
+        uri: datum.image,
+        mimetype: "image",
+      });
+
+    return track;
+  }
+
+  nftToUid = async (nft: NFT) => {
+    return this.addressToId.get(nft.erc721.address) as Promise<string>;
+  };
+}

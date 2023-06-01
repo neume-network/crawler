@@ -1,62 +1,76 @@
 import { fastify as Fastify } from "fastify";
 import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
 
-import { Config } from "../src/types.js";
-import { getLatestBlockNumber, getStrategies, getUserContracts } from "../src/utils.js";
-import crawl from "./crawl.js";
-import filter_contracts from "./filter_contracts.js";
-import { db } from "../database/index.js";
+import { CHAINS, Config } from "../src/types.js";
+import { getLatestBlockNumber, getStrategies } from "../src/utils.js";
 import { DaemonJsonrpcType } from "./daemon/daemon-jsonrpc-type.js";
 import { daemonJsonrpcSchema } from "./daemon/daemon-jsonrpc-schema.js";
 import { getLastCrawledBlock, saveLastCrawledBlock } from "../src/state.js";
+import { tracksDB } from "../database/tracks.js";
+import { getLocalStorage } from "../database/localstorage.js";
+import ExtractionWorker from "@neume-network/extraction-worker";
 
 const fastify = Fastify();
 
 export default async function daemon(
-  _from: number | undefined,
   crawlFlag: boolean,
   recrawl: boolean,
   port: number,
   config: Config,
   strategyNames: string[],
 ) {
-  const RANGE_FOR_CRAWL = 5000;
-  let from = _from ?? (await getLastCrawledBlock());
-  let to = Math.min(from + RANGE_FOR_CRAWL, await getLatestBlockNumber(config.rpc[0]));
-  let strategies = getStrategies(strategyNames, from, to);
+  const worker = ExtractionWorker(config.worker);
+  const allStrategies = getStrategies(strategyNames).map((s) => new s(worker, config));
 
-  const task = async () => {
-    const latestBlockNumber = await getLatestBlockNumber(config.rpc[0]);
-    to = Math.min(from + RANGE_FOR_CRAWL, latestBlockNumber);
+  const task = async (chain: CHAINS) => {
+    const { crawlStep } = config.chain[chain];
+    const latestBlockNumber = await getLatestBlockNumber(config.chain[chain].rpc[0]);
+    const from = await getLastCrawledBlock(chain);
+    const to = Math.min(from + crawlStep, latestBlockNumber);
 
-    console.log(`\n\n***** Starting a crawl cycle from ${from} to ${to} *****\n`);
+    const strategies = allStrategies.filter(
+      (s) =>
+        s.createdAtBlock <= from &&
+        to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
+        s.chain === chain,
+    );
 
-    strategies = getStrategies(strategyNames, from, to);
-    await filter_contracts(from, to, recrawl, config, strategies);
-    await crawl(from, to, recrawl, config, strategies);
+    await Promise.all(
+      strategies.map(async (strategy) => {
+        console.log("Calling strategy", strategy.constructor.name, "from", from, "to", to);
+        await strategy.crawl(from, to, recrawl);
+      }),
+    );
 
-    await saveLastCrawledBlock(to);
-    from = to;
+    await saveLastCrawledBlock(chain, to);
     const nextTaskWaitTime = to === latestBlockNumber ? config.breatheTimeMS : 0;
-    setTimeout(task, nextTaskWaitTime);
+
+    setTimeout(task.bind({}, chain), nextTaskWaitTime);
   };
 
-  if (crawlFlag) task();
+  if (crawlFlag) {
+    Object.values(CHAINS).forEach((c) => {
+      // Do not call the task for this chain if no strategies are present
+      if (allStrategies.filter((s) => s.chain === c).length) task(c);
+    });
+  }
+
   await startServer(port);
 }
 
 async function startServer(port: number) {
   const server = new JSONRPCServer();
 
-  server.addMethod("getIdsChanged_fill", async ([from, to]) => {
-    if (to - from > 5000)
-      return new JSONRPCErrorException("Block range should be less than 5000", -32600);
-    const res = await db.getIdsChanged_fill(from, to);
+  server.addMethod("getTracks", async ({ from, to, platform }) => {
+    // TODO: Make it per platform
+    // if (to - from > 5000)
+    //   return new JSONRPCErrorException("Block range should be less than 5000", -32600);
+    const res = await tracksDB.getTracksChanged(from, to, platform);
     return res;
   });
 
-  server.addMethod("getUserContracts", async () => {
-    return getUserContracts();
+  server.addMethod("getLocalStorage", async ({ platform }) => {
+    return getLocalStorage(platform);
   });
 
   fastify.route<{ Body: DaemonJsonrpcType }>({

@@ -1,5 +1,16 @@
 // All common types are declared here
-import { Config as ExtractionWorkerConfig, Transaction } from "@neume-network/schema";
+import { Config as ExtractionWorkerConfig } from "@neume-network/schema";
+
+export enum CHAINS {
+  "eth" = "eth",
+  "polygon" = "polygon",
+}
+
+export enum PROTOCOLS {
+  "arweave" = "arweave",
+  "https" = "https",
+  "ipfs" = "ipfs",
+}
 
 export const CONSTANTS = {
   DATA_DIR: "data",
@@ -7,7 +18,10 @@ export const CONSTANTS = {
     LAST_SYNC: "last_synced_block",
     LAST_CRAWL: "last_crawled_block",
   },
-  FIRST_BLOCK: 11000000,
+  FIRST_BLOCK: {
+    [CHAINS.eth]: 11000000,
+    [CHAINS.polygon]: 11000000,
+  },
 };
 
 export type RpcConfig = {
@@ -20,16 +34,7 @@ export type IpfsConfig = {
   httpsGatewayKey: string;
 };
 
-export type Config = {
-  rpc: RpcConfig[];
-  ipfs?: IpfsConfig;
-  arweave?: {
-    httpsGateway: string;
-  };
-  /**
-   * In order not to overwhelm the crawler we crawl in steps of block number.
-   */
-  crawlStep: number;
+type ChainConfig = {
   /**
    * RPC endpoints will not fetch events for a large block span. getLogsBlockSpanSize
    * is the maximum size limit enforced by the RPC endpoint.
@@ -40,6 +45,23 @@ export type Config = {
    * expresses the maximum size limit enforced by the RPC endpoint.
    */
   getLogsAddressSize: number;
+  rpc: RpcConfig[];
+  crawlStep: number;
+};
+
+export type Config = {
+  ipfs?: IpfsConfig;
+  arweave?: {
+    httpsGateway: string;
+  };
+  chain: {
+    [CHAINS.eth]: ChainConfig;
+    [CHAINS.polygon]: ChainConfig;
+  };
+  /**
+   * In order not to overwhelm the crawler we crawl in steps of block number.
+   */
+  crawlStep: number;
   /**
    * The time to wait (in milliseconds) before starting the next
    * crawl cycle. If the crawler has not crawled up to the latest block
@@ -78,7 +100,12 @@ export type NFT = {
   erc721: {
     blockNumber: number;
     address: string;
-    transaction: Transaction;
+    transaction: {
+      from: string;
+      to: string;
+      transactionHash: string;
+      blockNumber: number;
+    };
     token: {
       id: string;
       uri?: string;

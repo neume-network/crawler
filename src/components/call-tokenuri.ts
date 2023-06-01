@@ -1,13 +1,12 @@
-import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { Jsonrpc } from "@neume-network/schema";
 import { encodeFunctionCall, decodeParameters, toHex } from "eth-fun";
+import { Strategy } from "../strategies/strategy.types.js";
 
-import { Config, NFT } from "../types.js";
+import { NFT } from "../types.js";
 import { randomItem } from "../utils.js";
 
 export async function callTokenUri(
-  worker: ExtractionWorkerHandler,
-  config: Config,
+  this: Strategy,
   blockNumber: number,
   nft: NFT,
   overrideSignature?: Record<string, any>,
@@ -22,7 +21,7 @@ export async function callTokenUri(
       },
     ],
   };
-  const rpc = randomItem(config.rpc);
+  const rpc = randomItem(this.config.chain[this.chain].rpc);
   const options = {
     url: rpc.url,
     ...(rpc.key && {
@@ -52,7 +51,7 @@ export async function callTokenUri(
       toHex(blockNumber),
     ],
   };
-  const ret = await worker(msg);
+  const ret = await this.worker(msg);
 
   if (ret.error)
     throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(ret, null, 2)}`);

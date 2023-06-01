@@ -3,14 +3,15 @@ import path from "path";
 import https from "https";
 
 import { Strategy } from "./strategies/strategy.types.js";
-import { Contracts, RpcConfig } from "./types.js";
+import { CHAINS, Contracts, PROTOCOLS, RpcConfig } from "./types.js";
 
-import Sound from "./strategies/sound.js";
+// import Sound from "./strategies/sound.js";
 import SoundProtocol from "./strategies/sound_protocol.js";
-import Zora from "./strategies/zora.js";
-import CatalogV2 from "./strategies/catalog_v2.js";
-import MintSongsV2 from "./strategies/mintsongs_v2.js";
-import Noizd from "./strategies/noizd.js";
+// import Zora from "./strategies/zora.js";
+// import CatalogV2 from "./strategies/catalog_v2.js";
+// import MintSongsV2 from "./strategies/mintsongs_v2.js";
+// import Noizd from "./strategies/noizd.js";
+import Lens from "./strategies/lens/lens.js";
 
 export function randomItem<T>(arr: Array<T>): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -76,20 +77,23 @@ export async function getAllContracts(): Promise<Contracts> {
 /**
  * New strategies should be added here.
  */
-export function getStrategies(strategyNames: string[], from: number, to: number) {
+export function getStrategies(strategyNames: string[]) {
   const strategies: Array<typeof Strategy> = [
-    Sound,
+    // Sound,
+    Lens,
     SoundProtocol,
-    Zora,
-    CatalogV2,
-    MintSongsV2,
-    Noizd,
+    // Zora,
+    // CatalogV2,
+    // MintSongsV2,
+    // Noizd,
   ];
 
-  return strategies.filter(
-    (s) =>
-      s.createdAtBlock <= from &&
-      to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
-      strategyNames.includes(s.name),
-  );
+  return strategies.filter((s) => strategyNames.includes(s.name));
+}
+
+export function getProtocol(uri: string): PROTOCOLS {
+  if (uri.includes("ar://")) return PROTOCOLS.arweave;
+  else if (uri.includes("ipfs://")) return PROTOCOLS.ipfs;
+  else if (uri.includes("http://") || uri.includes("https://")) return PROTOCOLS.https;
+  throw new Error(`Invalid Protocl for ${uri}`);
 }
