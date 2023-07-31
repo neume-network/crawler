@@ -198,17 +198,16 @@ test.serial("should be able to get changed tracks", async (t) => {
   await tracksDB.upsertTrack(sample[0], 0);
   await tracksDB.upsertTrack(sample[1], 5);
 
-  let ret = await tracksDB.getTracksChanged(0, 0, sample[0].platform.name);
-  t.is(ret.length, 1);
-  t.deepEqual(ret[0], sample[0]);
+  let { tracks } = await tracksDB.getTracksChanged(0, sample[0].platform.name);
+  t.is(tracks.length, 2);
+  t.deepEqual(tracks[0], sample[0]);
 
-  ret = await tracksDB.getTracksChanged(0, 5, sample[0].platform.name);
-  t.is(ret.length, 2);
-  t.deepEqual(ret, sample);
+  ({ tracks } = await tracksDB.getTracksChanged(5, sample[0].platform.name));
+  t.is(tracks.length, 1);
+  t.deepEqual(tracks[0], sample[1]);
 
-  ret = await tracksDB.getTracksChanged(5, 5, sample[1].platform.name);
-  t.is(ret.length, 1);
-  t.deepEqual(ret[0], sample[1]);
+  ({ tracks } = await tracksDB.getTracksChanged(6, sample[1].platform.name));
+  t.is(tracks.length, 0);
 
   const newOwner = {
     from: "0x77a395A6f7c6E91192697Abb207ea3c171F4B338",
@@ -222,10 +221,10 @@ test.serial("should be able to get changed tracks", async (t) => {
     sample[0].erc721.tokens[0].id,
     newOwner,
     sample[0].platform.name,
-    5,
+    6,
   );
-  ret = await tracksDB.getTracksChanged(5, 5, sample[0].platform.name);
-  t.is(ret.length, 2);
+  ({ tracks } = await tracksDB.getTracksChanged(6, sample[0].platform.name));
+  t.is(tracks.length, 1);
 });
 
 test("should be able to update track", async (t) => {
