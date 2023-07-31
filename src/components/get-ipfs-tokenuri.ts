@@ -1,21 +1,15 @@
-import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { Strategy } from "../strategies/strategy.types.js";
 
-import { Config } from "../types.js";
+export async function getIpfsTokenUri(this: Strategy, uri: string): Promise<Record<any, any>> {
+  if (!this.config.ipfs) throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
 
-export async function getIpfsTokenUri(
-  uri: string,
-  worker: ExtractionWorkerHandler,
-  config: Config,
-): Promise<Record<any, any>> {
-  if (!config.ipfs) throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
-
-  const msg = await worker({
+  const msg = await this.worker({
     type: "ipfs",
     version: "0.0.1",
     commissioner: "",
     options: {
       uri: uri,
-      gateway: config.ipfs.httpsGateway,
+      gateway: this.config.ipfs.httpsGateway,
       retry: {
         retries: 3,
       },

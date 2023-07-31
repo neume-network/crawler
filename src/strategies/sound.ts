@@ -7,31 +7,55 @@ import { decodeLog, toHex } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { fetchTokenUri } from "../components/fetch-tokenuri.js";
 import { callOwner } from "../components/call-owner.js";
-
-import { Config, JsonRpcLog, NFT } from "../types.js";
-import { Strategy } from "./strategy.types.js";
+import { AbstractSublevel } from "abstract-level";
+import { Level } from "level";
+import { CHAINS, Config, Contract, JsonRpcLog, NFT } from "../types.js";
+import { ERC721Strategy } from "./strategy.types.js";
 import { randomItem } from "../utils.js";
 import { ifIpfsConvertToNativeIpfs } from "ipfs-uri-utils";
+import { localStorage } from "../../database/localstorage.js";
+import { handleTransfer } from "../components/handle-transfer.js";
 
-export default class Sound implements Strategy {
+export default class Sound implements ERC721Strategy {
   public static version = "1.0.0";
-  public static createdAtBlock = 13725566;
-  public static deprecatedAtBlock = null;
-  public static invalidIDs = [];
-
-  private worker: ExtractionWorkerHandler;
-  private config: Config;
+  static createdAtBlock = 13725566;
+  createdAtBlock = Sound.createdAtBlock;
+  deprecatedAtBlock = null;
+  static invalidIDs = [];
+  chain = CHAINS.eth;
+  worker: ExtractionWorkerHandler;
+  config: Config;
+  localStorage: AbstractSublevel<Level<string, any>, string | Buffer | Uint8Array, string, any>;
+  contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
     this.config = config;
+    this.localStorage = localStorage.sublevel(Sound.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel("contracts", {
+      valueEncoding: "json",
+    });
   }
 
-  filterContracts = async (from: number, to: number) => {
+  crawl = async (from: number, to: number, recrawl: boolean) => {
+    const { getLogsBlockSpanSize } = this.config.chain[this.chain];
+
+    const handleArtistCreatedPromises: Array<Promise<void>> = [];
+
+    for (let i = from; i <= to; i += getLogsBlockSpanSize + 1)
+      handleArtistCreatedPromises.push(this.handleArtistCreated(i, i + getLogsBlockSpanSize));
+    await Promise.all(handleArtistCreatedPromises);
+
+    await handleTransfer.call(this, from, to, recrawl);
+  };
+
+  handleArtistCreated = async (from: number, to: number) => {
     const artistCreatedSelector =
       "0x23748b43b77f98380e738976c6324996908ffc1989994dd3c68631c87a65a7c0";
 
-    const rpcHost = randomItem(this.config.rpc);
+    const rpcHost = randomItem(this.config.chain[this.chain].rpc);
     const options = {
       url: rpcHost.url,
       headers: {
@@ -105,10 +129,17 @@ export default class Sound implements Strategy {
       };
     });
 
-    return contracts;
+    await Promise.all(
+      contracts.map(async (c) => {
+        // Save contract address that is to be checked for NFTs in future
+        await this.contracts.put(c.address, { name: c.name, version: c.version });
+      }),
+    );
   };
 
-  crawl = async (nft: NFT) => {
+  nftToUid = async (nft: NFT) => `${this.chain}/${Sound.name}/${nft.erc721.address.toLowerCase()}`;
+
+  fetchMetadata = async (nft: NFT) => {
     // Instead of querying at the block number soundxyz NFT
     // was minted, we query at a higher block number because
     // soundxyz changed their tokenURI and the previous one
@@ -128,27 +159,22 @@ export default class Sound implements Strategy {
       return null;
     }
 
-    nft.erc721.token.uri = await callTokenUri(
-      this.worker,
-      this.config,
+    nft.erc721.token.uri = (await callTokenUri.call(
+      this,
       Math.max(nft.erc721.blockNumber, WORKING_AFTER_BLOCK),
       nft,
-    );
+    )) as string;
 
     nft.erc721.token.uriContent = await fetchTokenUri(nft.erc721.token.uri, this.worker);
 
-    nft.creator = await callOwner(
-      this.worker,
-      this.config,
-      nft.erc721.address,
-      nft.erc721.blockNumber,
-    );
+    nft.creator = await callOwner.call(this, nft.erc721.address, nft.erc721.blockNumber);
 
     const datum = nft.erc721.token.uriContent;
 
     return {
       version: Sound.version,
       title: datum.name,
+      uid: await this.nftToUid(nft),
       artist: {
         version: Sound.version,
         name: datum.artist_name,
@@ -162,21 +188,28 @@ export default class Sound implements Strategy {
       erc721: {
         version: Sound.version,
         createdAt: nft.erc721.blockNumber,
-        transaction: {
-          from: nft.erc721.transaction.from,
-          to: nft.erc721.transaction.to,
-          blockNumber: nft.erc721.transaction.blockNumber,
-          transactionHash: nft.erc721.transaction.transactionHash,
-        },
         address: nft.erc721.address,
-        tokenId: nft.erc721.token.id,
-        tokenURI: nft.erc721.token.uri,
-        metadata: {
-          ...datum,
-          name: datum.name,
-          description: datum.description,
-          image: datum.image,
-        },
+        tokens: [
+          {
+            id: nft.erc721.token.id,
+            uri: nft.erc721.token.uri,
+            metadata: {
+              ...datum,
+              name: datum.name,
+              description: datum.description,
+              image: datum.image,
+            },
+            owners: [
+              {
+                from: nft.erc721.transaction.from,
+                to: nft.erc721.transaction.to,
+                blockNumber: nft.erc721.blockNumber,
+                transactionHash: nft.erc721.transaction.transactionHash,
+                alias: undefined,
+              },
+            ],
+          },
+        ],
       },
       manifestations: [
         {
@@ -197,6 +230,4 @@ export default class Sound implements Strategy {
       ],
     };
   };
-
-  updateOwner(nft: NFT) {}
 }

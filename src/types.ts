@@ -87,7 +87,6 @@ export type JsonRpcLog = {
 };
 
 export type Contract = {
-  address: string;
   name: string;
   version: string;
 };

@@ -4,20 +4,22 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { CHAINS, CONSTANTS } from "./types.js";
+import { CONSTANTS } from "./types.js";
+import { getStrategies } from "./utils.js";
 
-export async function getLastCrawledBlock(chain: CHAINS) {
-  const location = path.resolve(CONSTANTS.DATA_DIR, CONSTANTS.STATE.LAST_CRAWL, chain);
+export async function getLastCrawledBlock(strategy: string) {
+  const location = path.resolve(CONSTANTS.DATA_DIR, CONSTANTS.STATE.LAST_CRAWL, strategy);
+  const { createdAtBlock } = getStrategies([strategy])[0];
   const fileExists = await fs
     .access(location, fs.constants.F_OK)
     .then(() => true)
     .catch(() => false);
-  if (!fileExists) await saveLastCrawledBlock(chain, CONSTANTS.FIRST_BLOCK[chain]);
+  if (!fileExists) await saveLastCrawledBlock(strategy, createdAtBlock);
   return fs.readFile(location, "utf-8").then(parseInt);
 }
 
-export async function saveLastCrawledBlock(chain: CHAINS, blockNumber: number) {
-  const location = path.resolve(CONSTANTS.DATA_DIR, CONSTANTS.STATE.LAST_CRAWL, chain);
+export async function saveLastCrawledBlock(strategy: string, blockNumber: number) {
+  const location = path.resolve(CONSTANTS.DATA_DIR, CONSTANTS.STATE.LAST_CRAWL, strategy);
   const fileExists = await fs
     .access(path.dirname(location), fs.constants.F_OK)
     .then(() => true)

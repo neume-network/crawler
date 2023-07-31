@@ -7,19 +7,20 @@ import { AbstractSublevel } from "abstract-level";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getArweaveTokenUri } from "../components/get-arweave-tokenuri.js";
 import { callOwner } from "../components/call-owner.js";
-import { CHAINS, Config, NFT } from "../types.js";
+import { CHAINS, Config, Contract, NFT } from "../types.js";
 import { ERC721Strategy } from "./strategy.types.js";
 import { ethGetLogs } from "../components/eth-get-logs.js";
 import { localStorage } from "../../database/localstorage.js";
 import { handleTransfer } from "../components/handle-transfer.js";
+import { z } from "zod";
+import { tracksDB } from "../../database/tracks.js";
 
 export default class SoundProtocol implements ERC721Strategy {
   static version = "2.0.0";
-  createdAtBlock = 15570834;
+  static createdAtBlock = 15570834;
+  createdAtBlock = SoundProtocol.createdAtBlock;
   deprecatedAtBlock = null;
   static invalidIDs = [];
-  static TRANSFER_EVENT_SELECTOR =
-    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
   static EDITION_CREATED_SELECTOR =
     "0x405098db99342b699216d8150e930dbbf2f686f5a43485aed1e69219dafd4935";
 
@@ -28,11 +29,15 @@ export default class SoundProtocol implements ERC721Strategy {
   worker: ExtractionWorkerHandler;
   config: Config;
   localStorage: AbstractSublevel<Level<string, any>, string | Buffer | Uint8Array, string, any>;
+  contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
     this.config = config;
     this.localStorage = localStorage.sublevel<string, any>(SoundProtocol.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel<string, any>("contracts", {
       valueEncoding: "json",
     });
   }
@@ -41,11 +46,15 @@ export default class SoundProtocol implements ERC721Strategy {
     const { getLogsBlockSpanSize } = this.config.chain[this.chain];
 
     const handleEditionCreatedPromises = [];
+    console.time(`${SoundProtocol.name} handleEditionCreated: ${from}-${to}`);
     for (let i = from; i <= to; i += getLogsBlockSpanSize + 1)
       handleEditionCreatedPromises.push(this.handleEditionCreated(i, i + getLogsBlockSpanSize));
     await Promise.all(handleEditionCreatedPromises);
+    console.timeEnd(`${SoundProtocol.name} handleEditionCreated: ${from}-${to}`);
 
+    console.time(`${SoundProtocol.name} handleTransfer: ${from}-${to}`);
     await this.handleTransfer(from, to, recrawl);
+    console.timeEnd(`${SoundProtocol.name} handleTransfer: ${from}-${to}`);
   };
 
   handleEditionCreated = async (from: number, to: number) => {
@@ -73,15 +82,11 @@ export default class SoundProtocol implements ERC721Strategy {
       };
     });
 
-    const contractsStorage = this.localStorage.sublevel<string, any>("contracts", {
-      valueEncoding: "json",
-    });
-
     await Promise.all(
       contracts.map(async (c) => {
         console.log("Found a SoundProtocol contract", c.address);
         // Save contract address that is to be checked for NFTs in future
-        await contractsStorage.put(c.address, { name: c.name, version: c.version });
+        await this.contracts.put(c.address, { name: c.name, version: c.version });
       }),
     );
   };
@@ -97,10 +102,32 @@ export default class SoundProtocol implements ERC721Strategy {
         `${nft.erc721.address}/${nft.erc721.token.id}`.match(id),
       ).length != 0
     ) {
-      console.log(
-        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`,
-      );
+      // console.log(
+      //   `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`,
+      // );
       return null;
+    }
+
+    const uid = await this.nftToUid(nft);
+
+    if (await tracksDB.isTrackPresent(uid)) {
+      // Metadata already present, don't fetch from arweave again.
+      const track = await tracksDB.getTrack(uid);
+
+      track.erc721.tokens.push({
+        id: nft.erc721.token.id,
+        owners: [
+          {
+            from: nft.erc721.transaction.from,
+            to: nft.erc721.transaction.to,
+            blockNumber: nft.erc721.blockNumber,
+            transactionHash: nft.erc721.transaction.transactionHash,
+            alias: undefined,
+          },
+        ],
+      });
+
+      return track;
     }
 
     nft.erc721.token.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft);
@@ -131,6 +158,16 @@ export default class SoundProtocol implements ERC721Strategy {
     try {
       const datum = nft.erc721.token.uriContent as any;
 
+      const schema = z.object({
+        name: z.string(),
+        artist: z.string(),
+        description: z.string(),
+        image: z.string(),
+        losslessAudio: z.string(),
+      });
+
+      schema.passthrough().parse(datum);
+
       return {
         version: SoundProtocol.version,
         title: datum.name,
@@ -142,7 +179,7 @@ export default class SoundProtocol implements ERC721Strategy {
         },
         platform: {
           version: SoundProtocol.version,
-          name: "Sound Protocol",
+          name: SoundProtocol.name,
           uri: "https://sound.xyz",
         },
         erc721: {
@@ -152,13 +189,6 @@ export default class SoundProtocol implements ERC721Strategy {
           tokens: [
             {
               id: nft.erc721.token.id,
-              uri: nft.erc721.token.uri,
-              metadata: {
-                ...datum,
-                name: datum.name,
-                description: datum.description,
-                image: datum.image,
-              },
               owners: [
                 {
                   from: nft.erc721.transaction.from,
@@ -170,6 +200,13 @@ export default class SoundProtocol implements ERC721Strategy {
               ],
             },
           ],
+          uri: nft.erc721.token.uri,
+          metadata: {
+            ...datum,
+            name: datum.name,
+            description: datum.description,
+            image: datum.image,
+          },
         },
         manifestations: [
           {
@@ -184,11 +221,11 @@ export default class SoundProtocol implements ERC721Strategy {
           },
         ],
       };
-    } catch {
+    } catch (err: any) {
       // Failed to transform the track. Most probably the metadata is
       // incorrectly formatted. Ignoring the track.
       console.log(
-        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because of incorrect metadata`,
+        `Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because of incorrect metadata - ${err.code}`,
       );
       return null;
     }

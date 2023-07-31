@@ -6,7 +6,7 @@ import { CHAINS, Config, Contract, NFT } from "../types.js";
 
 export declare class Strategy {
   public static version: string;
-
+  
   // We have both static and non-static variable. Both should be equal.
   // static is used to get chain without initialising the class (eg. ClassName.chain)
   // non-static is used for `this.chain`
@@ -16,8 +16,9 @@ export declare class Strategy {
    * Neume will not include the strategy in the crawl
    * if the range of the crawl is not included in between
    * createdAtBlock and deprecatedAtBlock, both inclusive.
-   */
-  public createdAtBlock: number;
+  */
+ public createdAtBlock: number;
+ public static createdAtBlock: number;
   /**
    * Neume will not include the strategy in the crawl
    * if the range of the crawl is not included in between
@@ -26,7 +27,7 @@ export declare class Strategy {
   public deprecatedAtBlock: number | null;
   public worker: ExtractionWorkerHandler;
   public config: Config;
-  public localStorage: AbstractSublevel<
+  public localStorage?: AbstractSublevel<
     Level<string, any>,
     string | Buffer | Uint8Array,
     string,
@@ -47,5 +48,18 @@ export declare class Strategy {
 }
 
 export declare class ERC721Strategy extends Strategy {
+  /** 
+   * ERC721 Contracts where NFTs are published. 
+   * Addresses added to this storage will be crawled by `handleTransfer`.
+   * 
+   * **Implementation**:
+   * ```
+   * this.contracts = this.localStorage.sublevel("contracts", {
+      valueEncoding: "json",
+    });
+    ```
+   **/
+  contracts: AbstractSublevel<Strategy['localStorage'], any, string, Contract>;
+
   fetchMetadata: (nft: NFT) => Promise<Track | null>;
 }

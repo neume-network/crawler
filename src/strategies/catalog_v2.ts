@@ -7,36 +7,55 @@ import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
-import { Config, NFT } from "../types.js";
-import { Strategy } from "./strategy.types.js";
+import { CHAINS, Config, Contract, NFT } from "../types.js";
+import { ERC721Strategy } from "./strategy.types.js";
 import { randomItem } from "../utils.js";
+import { AbstractSublevel } from "abstract-level";
+import { Level } from "level";
+import { localStorage } from "../../database/localstorage.js";
+import { handleTransfer } from "../components/handle-transfer.js";
 
-export default class CatalogV2 implements Strategy {
+export default class CatalogV2 implements ERC721Strategy {
   public static version = "2.0.0";
-  public static createdAtBlock = 0;
-  public static deprecatedAtBlock = null;
-  private worker: ExtractionWorkerHandler;
-  private config: Config;
+  // The Catalog contract was deployed at https://etherscan.io/tx/0x65a0c575267dae42937363299c58cb0d30e35b0a6741ff0dc079ffd927c8e1b2
+  static createdAtBlock = 14566826;
+  createdAtBlock = CatalogV2.createdAtBlock;
+  deprecatedAtBlock = null;
+  chain = CHAINS.eth;
+  worker: ExtractionWorkerHandler;
+  config: Config;
+  localStorage: AbstractSublevel<Level<string, any>, string | Buffer | Uint8Array, string, any>;
+  contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
     this.config = config;
+    this.localStorage = localStorage.sublevel(CatalogV2.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel("contracts", {
+      valueEncoding: "json",
+    });
+
+    const CATALOG_NFT_CONTRACT = "0x0bC2A24ce568DAd89691116d5B34DEB6C203F342";
+    this.contracts.put(CATALOG_NFT_CONTRACT, {
+      name: CatalogV2.name,
+      version: CatalogV2.version,
+    });
   }
 
-  crawl = async (nft: NFT) => {
-    nft.erc721.token.uri = await callTokenUri(
-      this.worker,
-      this.config,
-      nft.erc721.blockNumber,
-      nft,
-    );
+  crawl = async (from: number, to: number, recrawl: boolean) => {
+    await handleTransfer.call(this, from, to, recrawl);
+  };
+
+  fetchMetadata = async (nft: NFT) => {
+    nft.erc721.token.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft);
 
     try {
-      nft.erc721.token.uriContent = await getIpfsTokenUri(
+      nft.erc721.token.uriContent = (await getIpfsTokenUri.call(
+        this,
         nft.erc721.token.uri,
-        this.worker,
-        this.config,
-      );
+      )) as Record<string, any>;
     } catch (err: any) {
       if (err.message.includes("Invalid CID")) {
         console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
@@ -69,6 +88,7 @@ export default class CatalogV2 implements Strategy {
       version: CatalogV2.version,
       title: datum.title,
       duration,
+      uid: await this.nftToUid(nft),
       artist: {
         version: CatalogV2.version,
         name: datum.artist,
@@ -80,23 +100,30 @@ export default class CatalogV2 implements Strategy {
         uri: "https://catalog.works",
       },
       erc721: {
-        transaction: {
-          from: nft.erc721.transaction.from,
-          to: nft.erc721.transaction.to,
-          blockNumber: nft.erc721.transaction.blockNumber,
-          transactionHash: nft.erc721.transaction.transactionHash,
-        },
         version: CatalogV2.version,
         createdAt: nft.erc721.blockNumber,
-        tokenId: nft.erc721.token.id,
         address: nft.erc721.address,
-        tokenURI: nft.erc721.token.uri,
-        metadata: {
-          ...datum,
-          name: datum.name,
-          description: datum.description,
-          image: datum.image,
-        },
+        tokens: [
+          {
+            id: nft.erc721.token.id,
+            uri: nft.erc721.token.uri,
+            metadata: {
+              ...datum,
+              name: datum.name,
+              description: datum.description,
+              image: datum.image,
+            },
+            owners: [
+              {
+                from: nft.erc721.transaction.from,
+                to: nft.erc721.transaction.to,
+                blockNumber: nft.erc721.blockNumber,
+                transactionHash: nft.erc721.transaction.transactionHash,
+                alias: undefined,
+              },
+            ],
+          },
+        ],
       },
       manifestations: [
         {
@@ -113,14 +140,15 @@ export default class CatalogV2 implements Strategy {
     };
   };
 
-  updateOwner(nft: NFT) {}
+  nftToUid = async (nft: NFT) =>
+    `${this.chain}/${CatalogV2.name}/${nft.erc721.address.toLowerCase()}/${nft.erc721.token.id}`;
 
   private callCreator = async (
     to: string,
     blockNumber: number,
     tokenId: string,
   ): Promise<string> => {
-    const rpc = randomItem(this.config.rpc);
+    const rpc = randomItem(this.config.chain[this.chain].rpc);
     const data = encodeFunctionCall(
       {
         name: "creator",

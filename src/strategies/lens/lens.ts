@@ -1,8 +1,12 @@
+/**
+ * Current lens first song - 33474641
+ */
+
 import ExtractionWorker, { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { Track } from "@neume-network/schema";
 import { toHex, decodeLog, encodeParameters, decodeParameters } from "eth-fun";
 
-import { CHAINS, Config, NFT, PROTOCOLS } from "../../types.js";
+import { CHAINS, Config, Contract, NFT, PROTOCOLS } from "../../types.js";
 import { Strategy } from "../strategy.types.js";
 import { getProtocol } from "../../utils.js";
 import { localStorage } from "../../../database/localstorage.js";
@@ -15,6 +19,7 @@ import { Level } from "level";
 import { tracksDB } from "../../../database/tracks.js";
 import { handleTransfer } from "../../components/handle-transfer.js";
 import { getAlias, getCollectNFT, getHandle } from "./components.js";
+import { z } from "zod";
 
 // Post from Lens
 type Post = {
@@ -31,8 +36,10 @@ type Post = {
 
 export default class Lens implements Strategy {
   public static version = "1.0.0";
+  // The lens hub was created at this block: https://polygonscan.com/tx/0xca69b18b7e2daf4695c6d614e263d6aa9bdee44bee91bee7e0e6e5e5e4262fca
+  public static createdAtBlock = 28384641;
+  public createdAtBlock = Lens.createdAtBlock;
   public deprecatedAtBlock = null;
-  public createdAtBlock = 0;
   public worker: ExtractionWorkerHandler;
   public config: Config;
   public chain = CHAINS.polygon;
@@ -52,14 +59,28 @@ export default class Lens implements Strategy {
     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
   // `${post.profileId}-${post.pubId}`
-  public static ignoredPosts = ["39133-682", "88863-16"];
+  public static ignoredPosts = [
+    "39133-682",
+    "88863-16",
+    "18497-28",
+    "3834-24",
+    "40863-4",
+    "40635-1",
+    "49754-2",
+  ];
+  // The following transactions can't be decoded
+  public static ignoredTransactions = [
+    "0x52c63367c36eb24a08654c89dc647267a9f1171af3962dafe5cefab31e21293d",
+  ];
 
   /** Contracts where NFTs are published */
-  public contracts: AbstractSublevel<any, any, string, any>;
+  public contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
   /** Lens protocol IDs to listen for contracts */
   public trackedIds: AbstractSublevel<any, any, string, any>;
   /** A mapping between NFT contract address and Lens ID */
   public addressToId: AbstractSublevel<any, any, string, any>;
+  /** Posts that we have already seen. Either crawled or ignored. Useful to not recrawl. */
+  public seenPosts: AbstractSublevel<any, any, string, any>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
@@ -76,20 +97,23 @@ export default class Lens implements Strategy {
     this.addressToId = this.localStorage.sublevel<string, any>("addressToId", {
       valueEncoding: "json",
     });
+    this.seenPosts = this.localStorage.sublevel<string, any>("crawledPosts", {
+      valueEncoding: "json",
+    });
   }
 
   async crawl(from: number, to: number, recrawl: boolean) {
-    console.time(`handlePostCreated: ${from}-${to}`);
+    console.time(`${Lens.name} handlePostCreated: ${from}-${to}`);
     await this.handlePostCreated(from, to, recrawl);
-    console.timeEnd(`handlePostCreated: ${from}-${to}`);
+    console.timeEnd(`${Lens.name} handlePostCreated: ${from}-${to}`);
 
-    console.time(`handleCollectNftDeployed: ${from}-${to}`);
+    console.time(`${Lens.name} handleCollectNftDeployed: ${from}-${to}`);
     await this.handleCollectNftDeployed(from, to, recrawl);
-    console.timeEnd(`handleCollectNftDeployed: ${from}-${to}`);
+    console.timeEnd(`${Lens.name} handleCollectNftDeployed: ${from}-${to}`);
 
-    console.time(`handleTransfer: ${from}-${to}`);
+    console.time(`${Lens.name} handleTransfer: ${from}-${to}`);
     await handleTransfer.call(this, from, to, recrawl);
-    console.timeEnd(`handleTransfer: ${from}-${to}`);
+    console.timeEnd(`${Lens.name} handleTransfer: ${from}-${to}`);
   }
 
   async handleCollectNftDeployed(from: number, to: number, recrawl: boolean) {
@@ -162,7 +186,16 @@ export default class Lens implements Strategy {
                 let { profileId, pubId, collectNFT } = decodedTopics;
                 collectNFT = collectNFT.toLowerCase();
 
-                console.log("found collect nft", collectNFT, profileId, pubId);
+                try {
+                  await this.trackedIds.get(`${profileId}-${pubId}`);
+                } catch (err: any) {
+                  if (err.code === "LEVEL_NOT_FOUND") {
+                    // We have ignored this particular track but a combination of this
+                    // profileId and pubId is present in topics that is why we are here
+                    return;
+                  }
+                  throw err;
+                }
 
                 await this.contracts.put(collectNFT, {
                   name: Lens.name,
@@ -170,6 +203,10 @@ export default class Lens implements Strategy {
                 });
                 await this.addressToId.put(collectNFT, `${this.chain}/${profileId}/${pubId}`);
                 await this.trackedIds.del(`${profileId}-${pubId}`);
+
+                const track = await tracksDB.getTrack(`${this.chain}/${profileId}/${pubId}`);
+                track.erc721.address = collectNFT; // We didn't have erc721.address at the time of crawl. Updating it now.
+                await tracksDB.upsertTrack(track);
               }),
             );
           });
@@ -195,53 +232,61 @@ export default class Lens implements Strategy {
         [Lens.LENS_HUB_ADDRESS],
       );
 
-      const posts = (await Promise.all(
-        logs.map(async (log) => {
-          if (!log.transactionHash || !log.blockNumber) {
-            throw new Error(
-              `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`,
+      const posts = (
+        await Promise.all(
+          logs.map(async (log) => {
+            if (!log.transactionHash || !log.blockNumber) {
+              throw new Error(
+                `log doesn't contain the required fields: ${JSON.stringify(log, null, 2)}`,
+              );
+            }
+
+            if (Lens.ignoredTransactions.includes(log.transactionHash)) {
+              return null;
+            }
+
+            const decodedTopics = decodeLog(
+              [
+                { indexed: true, name: "profileId", type: "uint256" },
+                { indexed: true, name: "pubId", type: "uint256" },
+                { indexed: false, name: "contentURI", type: "string" },
+                { indexed: false, name: "collectModule", type: "address" },
+                { indexed: false, name: "collectModuleReturnData", type: "bytes" },
+                { indexed: false, name: "referenceModule", type: "address" },
+                { indexed: false, name: "referenceModuleReturnData", type: "bytes" },
+                { indexed: false, name: "timestamp", type: "uint256" },
+              ],
+              log.data,
+              log.topics.slice(1),
             );
-          }
 
-          const decodedTopics = decodeLog(
-            [
-              { indexed: true, name: "profileId", type: "uint256" },
-              { indexed: true, name: "pubId", type: "uint256" },
-              { indexed: false, name: "contentURI", type: "string" },
-              { indexed: false, name: "collectModule", type: "address" },
-              { indexed: false, name: "collectModuleReturnData", type: "bytes" },
-              { indexed: false, name: "referenceModule", type: "address" },
-              { indexed: false, name: "referenceModuleReturnData", type: "bytes" },
-              { indexed: false, name: "timestamp", type: "uint256" },
-            ],
-            log.data,
-            log.topics.slice(1),
-          );
-
-          return {
-            profileId: parseInt(decodedTopics[0]),
-            pubId: parseInt(decodedTopics[1]),
-            contentURI: decodedTopics[2],
-            collectModule: decodedTopics[3],
-            collectModuleReturnData: decodedTopics[4],
-            referenceModule: decodedTopics[5],
-            referenceModuleReturnData: decodedTopics[6],
-            timestamp: parseInt(decodedTopics[7]),
-            blockNumber: parseInt(log.blockNumber),
-          };
-        }),
-      )) as Post[];
+            return {
+              profileId: parseInt(decodedTopics[0]),
+              pubId: parseInt(decodedTopics[1]),
+              contentURI: decodedTopics[2],
+              collectModule: decodedTopics[3],
+              collectModuleReturnData: decodedTopics[4],
+              referenceModule: decodedTopics[5],
+              referenceModuleReturnData: decodedTopics[6],
+              timestamp: parseInt(decodedTopics[7]),
+              blockNumber: parseInt(log.blockNumber),
+            };
+          }),
+        )
+      ).filter((post) => post !== null) as Post[];
 
       await Promise.all(
         posts.map(async (post) => {
-          let track;
+          let trackAlreadyPresent = await this.seenPosts
+            .get(`${post.profileId}-${post.pubId}`)
+            .then(() => true)
+            .catch(() => false);
+
+          let track: Track | null;
           try {
-            if (
-              !recrawl &&
-              (await tracksDB.isTrackPresent(`${this.chain}/${post.profileId}/${post.pubId}`))
-            )
-              return;
+            if (!recrawl && trackAlreadyPresent) return;
             track = await this.processPost(post);
+            await this.seenPosts.put(`${post.profileId}-${post.pubId}`, {});
           } catch (err) {
             console.log(post);
             throw err;
@@ -304,7 +349,17 @@ export default class Lens implements Strategy {
       return null;
     }
 
+    // Regex for valid URIs; from: https://github.com/ajv-validator/ajv-formats/blob/4dd65447575b35d0187c6b125383366969e6267e/src/formats.ts#L229C12
+    const URI =
+      /^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:\?(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i;
+    if (!post.contentURI || !URI.test(post.contentURI)) return null;
+
     const protocol = getProtocol(post.contentURI);
+
+    if (!protocol) {
+      // console.log("Invalid protocol; skipping", post.contentURI);
+      return null;
+    }
 
     let datum: Record<any, any>;
     try {
@@ -318,25 +373,29 @@ export default class Lens implements Strategy {
         }
         datum = await getArweaveTokenUri(post.contentURI, this.worker, this.config);
       } else if (protocol === PROTOCOLS.ipfs) {
-        datum = await getIpfsTokenUri(post.contentURI, this.worker, this.config);
+        datum = await getIpfsTokenUri.call(this, post.contentURI);
       } else if (protocol === PROTOCOLS.https) {
         datum = await fetchTokenUri(post.contentURI, this.worker);
       } else {
-        throw new Error(`Invalid Protocl for ${post.contentURI}`);
+        throw new Error(`Invalid Protocol for ${post.contentURI}`);
       }
     } catch (err: any) {
-      if (err.message.includes("status: 4") || err.message.includes("Invalid CID")) {
+      if (
+        err.message.includes("status: 4") ||
+        err.message.includes("Invalid CID") ||
+        err.message.includes("ECONNREFUSED")
+      ) {
         return null;
       }
       throw err;
     }
 
-    if (!datum || !datum.media) {
-      // console.log("No media; skipping");
+    if (!datum || !datum.media || datum.version !== "2.0.0") {
+      // console.log("No media; skipping", datum.media, datum.version);
       return null;
     }
 
-    const media = datum.media.find((m: any) => m.type.includes("audio"));
+    const media = datum.media.find?.((m: any) => m?.type?.includes("audio"));
 
     if (!media) {
       // console.log("No audio in media; skipping");
@@ -348,6 +407,19 @@ export default class Lens implements Strategy {
     ).toLowerCase();
 
     const artistHandle = await getHandle.call(this, post.profileId, post.blockNumber);
+
+    try {
+      const schema = z.object({
+        name: z.string(),
+        content: z.string(),
+        image: z.string().optional(),
+      });
+
+      schema.passthrough().parse(datum);
+    } catch {
+      // The required fields are not present in the metadata. Hence, ignoring it.
+      return null;
+    }
 
     const track = {
       version: Lens.version,
