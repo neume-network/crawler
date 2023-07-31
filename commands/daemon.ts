@@ -1,7 +1,7 @@
 import { fastify as Fastify } from "fastify";
-import { JSONRPCServer, JSONRPCErrorException } from "json-rpc-2.0";
+import { JSONRPCServer } from "json-rpc-2.0";
 
-import { CHAINS, Config } from "../src/types.js";
+import { Config } from "../src/types.js";
 import { getLatestBlockNumber, getStrategies } from "../src/utils.js";
 import { DaemonJsonrpcType } from "./daemon/daemon-jsonrpc-type.js";
 import { daemonJsonrpcSchema } from "./daemon/daemon-jsonrpc-schema.js";
@@ -9,6 +9,7 @@ import { getLastCrawledBlock, saveLastCrawledBlock } from "../src/state.js";
 import { tracksDB } from "../database/tracks.js";
 import { getLocalStorage } from "../database/localstorage.js";
 import ExtractionWorker from "@neume-network/extraction-worker";
+import { Strategy } from "../src/strategies/strategy.types.js";
 
 const fastify = Fastify();
 
@@ -22,36 +23,31 @@ export default async function daemon(
   const worker = ExtractionWorker(config.worker);
   const allStrategies = getStrategies(strategyNames).map((s) => new s(worker, config));
 
-  const task = async (chain: CHAINS) => {
-    const { crawlStep } = config.chain[chain];
-    const latestBlockNumber = await getLatestBlockNumber(config.chain[chain].rpc[0]);
-    const from = await getLastCrawledBlock(chain);
+  const task = async (strategy: Strategy) => {
+    const { crawlStep } = config.chain[strategy.chain];
+    const latestBlockNumber = await getLatestBlockNumber(config.chain[strategy.chain].rpc[0]);
+    const from = await getLastCrawledBlock(strategy.constructor.name);
     const to = Math.min(from + crawlStep, latestBlockNumber);
 
-    const strategies = allStrategies.filter(
-      (s) =>
-        s.createdAtBlock <= from &&
-        to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
-        s.chain === chain,
-    );
+    if (from >= (strategy.deprecatedAtBlock ?? Number.MAX_VALUE)) {
+      console.log(
+        `Removing ${strategy.constructor.name} from queue because we have reached deprecatedAtBlock (${strategy.deprecatedAtBlock})`,
+      );
+      return;
+    }
 
-    await Promise.all(
-      strategies.map(async (strategy) => {
-        console.log("Calling strategy", strategy.constructor.name, "from", from, "to", to);
-        await strategy.crawl(from, to, recrawl);
-      }),
-    );
+    console.log("Calling strategy", strategy.constructor.name, "from", from, "to", to);
+    await strategy.crawl(from, to, recrawl);
 
-    await saveLastCrawledBlock(chain, to);
-    const nextTaskWaitTime = to === latestBlockNumber ? config.breatheTimeMS : 0;
+    await saveLastCrawledBlock(strategy.constructor.name, to);
+    const nextTaskWaitTime = to === latestBlockNumber ? config.breatheTimeMS ?? 1 : 1;
 
-    setTimeout(task.bind({}, chain), nextTaskWaitTime);
+    setTimeout(task.bind({}, strategy), nextTaskWaitTime);
   };
 
   if (crawlFlag) {
-    Object.values(CHAINS).forEach((c) => {
-      // Do not call the task for this chain if no strategies are present
-      if (allStrategies.filter((s) => s.chain === c).length) task(c);
+    allStrategies.forEach((s) => {
+      task(s);
     });
   }
 
@@ -61,11 +57,10 @@ export default async function daemon(
 async function startServer(port: number) {
   const server = new JSONRPCServer();
 
-  server.addMethod("getTracks", async ({ from, to, platform }) => {
-    // TODO: Make it per platform
+  server.addMethod("getTracks", async ({ since, platform }) => {
     // if (to - from > 5000)
     //   return new JSONRPCErrorException("Block range should be less than 5000", -32600);
-    const res = await tracksDB.getTracksChanged(from, to, platform);
+    const res = await tracksDB.getTracksChanged(since, platform);
     return res;
   });
 
