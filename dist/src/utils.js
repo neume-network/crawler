@@ -1,12 +1,12 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import https from "https";
+import { PROTOCOLS } from "./types.js";
 import Sound from "./strategies/sound.js";
 import SoundProtocol from "./strategies/sound_protocol.js";
 import Zora from "./strategies/zora.js";
 import CatalogV2 from "./strategies/catalog_v2.js";
 import MintSongsV2 from "./strategies/mintsongs_v2.js";
 import Noizd from "./strategies/noizd.js";
+import Lens from "./strategies/lens/lens.js";
 export function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -37,38 +37,27 @@ export function getLatestBlockNumber(rpcHost) {
         req.end();
     });
 }
-export async function getDefaultContracts() {
-    const defaultContractsPath = new URL("../assets/contracts.hardcode.json", import.meta.url);
-    return JSON.parse(await readFile(defaultContractsPath, "utf-8"));
-}
-export async function getUserContracts() {
-    const userContractsPath = path.resolve("./data/contracts.json");
-    return JSON.parse(await readFile(userContractsPath, "utf-8"));
-}
-/**
- * User's contracts.json contains the new found addresses
- * Neume's contracts.hardcode.json contains hardcoded addresses
- * This function reads and merge them both.
- */
-export async function getAllContracts() {
-    return {
-        ...(await getDefaultContracts()),
-        ...(await getUserContracts()),
-    };
-}
 /**
  * New strategies should be added here.
  */
-export function getStrategies(strategyNames, from, to) {
+export function getStrategies(strategyNames) {
     const strategies = [
         Sound,
+        Lens,
         SoundProtocol,
         Zora,
         CatalogV2,
         MintSongsV2,
         Noizd,
     ];
-    return strategies.filter((s) => s.createdAtBlock <= from &&
-        to <= (s.deprecatedAtBlock ?? Number.MAX_VALUE) &&
-        strategyNames.includes(s.name));
+    return strategies.filter((s) => strategyNames.includes(s.name));
+}
+export function getProtocol(uri) {
+    if (uri.startsWith("ar://"))
+        return PROTOCOLS.arweave;
+    else if (uri.startsWith("ipfs://"))
+        return PROTOCOLS.ipfs;
+    else if (uri.startsWith("http://") || uri.startsWith("https://"))
+        return PROTOCOLS.https;
+    return null;
 }

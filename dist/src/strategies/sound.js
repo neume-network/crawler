@@ -5,13 +5,27 @@ import { decodeLog, toHex } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { fetchTokenUri } from "../components/fetch-tokenuri.js";
 import { callOwner } from "../components/call-owner.js";
+import { CHAINS } from "../types.js";
 import { randomItem } from "../utils.js";
 import { ifIpfsConvertToNativeIpfs } from "ipfs-uri-utils";
+import { localStorage } from "../../database/localstorage.js";
+import { handleTransfer } from "../components/handle-transfer.js";
 export default class Sound {
     constructor(worker, config) {
-        this.filterContracts = async (from, to) => {
+        this.createdAtBlock = Sound.createdAtBlock;
+        this.deprecatedAtBlock = null;
+        this.chain = CHAINS.eth;
+        this.crawl = async (from, to, recrawl) => {
+            const { getLogsBlockSpanSize } = this.config.chain[this.chain];
+            const handleArtistCreatedPromises = [];
+            for (let i = from; i <= to; i += getLogsBlockSpanSize + 1)
+                handleArtistCreatedPromises.push(this.handleArtistCreated(i, i + getLogsBlockSpanSize));
+            await Promise.all(handleArtistCreatedPromises);
+            await handleTransfer.call(this, from, to, recrawl);
+        };
+        this.handleArtistCreated = async (from, to) => {
             const artistCreatedSelector = "0x23748b43b77f98380e738976c6324996908ffc1989994dd3c68631c87a65a7c0";
-            const rpcHost = randomItem(this.config.rpc);
+            const rpcHost = randomItem(this.config.chain[this.chain].rpc);
             const options = {
                 url: rpcHost.url,
                 headers: {
@@ -69,9 +83,13 @@ export default class Sound {
                     version: Sound.version,
                 };
             });
-            return contracts;
+            await Promise.all(contracts.map(async (c) => {
+                // Save contract address that is to be checked for NFTs in future
+                await this.contracts.put(c.address, { name: c.name, version: c.version });
+            }));
         };
-        this.crawl = async (nft) => {
+        this.nftToUid = async (nft) => `${this.chain}/${Sound.name}/${nft.erc721.address.toLowerCase()}`;
+        this.fetchMetadata = async (nft) => {
             // Instead of querying at the block number soundxyz NFT
             // was minted, we query at a higher block number because
             // soundxyz changed their tokenURI and the previous one
@@ -85,13 +103,14 @@ export default class Sound {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
                 return null;
             }
-            nft.erc721.token.uri = await callTokenUri(this.worker, this.config, Math.max(nft.erc721.blockNumber, WORKING_AFTER_BLOCK), nft);
+            nft.erc721.token.uri = (await callTokenUri.call(this, Math.max(nft.erc721.blockNumber, WORKING_AFTER_BLOCK), nft));
             nft.erc721.token.uriContent = await fetchTokenUri(nft.erc721.token.uri, this.worker);
-            nft.creator = await callOwner(this.worker, this.config, nft.erc721.address, nft.erc721.blockNumber);
+            nft.creator = await callOwner.call(this, nft.erc721.address, nft.erc721.blockNumber);
             const datum = nft.erc721.token.uriContent;
             return {
                 version: Sound.version,
                 title: datum.name,
+                uid: await this.nftToUid(nft),
                 artist: {
                     version: Sound.version,
                     name: datum.artist_name,
@@ -105,21 +124,28 @@ export default class Sound {
                 erc721: {
                     version: Sound.version,
                     createdAt: nft.erc721.blockNumber,
-                    transaction: {
-                        from: nft.erc721.transaction.from,
-                        to: nft.erc721.transaction.to,
-                        blockNumber: nft.erc721.transaction.blockNumber,
-                        transactionHash: nft.erc721.transaction.transactionHash,
-                    },
                     address: nft.erc721.address,
-                    tokenId: nft.erc721.token.id,
-                    tokenURI: nft.erc721.token.uri,
-                    metadata: {
-                        ...datum,
-                        name: datum.name,
-                        description: datum.description,
-                        image: datum.image,
-                    },
+                    tokens: [
+                        {
+                            id: nft.erc721.token.id,
+                            uri: nft.erc721.token.uri,
+                            metadata: {
+                                ...datum,
+                                name: datum.name,
+                                description: datum.description,
+                                image: datum.image,
+                            },
+                            owners: [
+                                {
+                                    from: nft.erc721.transaction.from,
+                                    to: nft.erc721.transaction.to,
+                                    blockNumber: nft.erc721.blockNumber,
+                                    transactionHash: nft.erc721.transaction.transactionHash,
+                                    alias: undefined,
+                                },
+                            ],
+                        },
+                    ],
                 },
                 manifestations: [
                     {
@@ -142,10 +168,14 @@ export default class Sound {
         };
         this.worker = worker;
         this.config = config;
+        this.localStorage = localStorage.sublevel(Sound.name, {
+            valueEncoding: "json",
+        });
+        this.contracts = this.localStorage.sublevel("contracts", {
+            valueEncoding: "json",
+        });
     }
-    updateOwner(nft) { }
 }
 Sound.version = "1.0.0";
 Sound.createdAtBlock = 13725566;
-Sound.deprecatedAtBlock = null;
 Sound.invalidIDs = [];

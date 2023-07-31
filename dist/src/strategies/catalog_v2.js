@@ -5,13 +5,22 @@
 import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
+import { CHAINS } from "../types.js";
 import { randomItem } from "../utils.js";
+import { localStorage } from "../../database/localstorage.js";
+import { handleTransfer } from "../components/handle-transfer.js";
 export default class CatalogV2 {
     constructor(worker, config) {
-        this.crawl = async (nft) => {
-            nft.erc721.token.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft);
+        this.createdAtBlock = CatalogV2.createdAtBlock;
+        this.deprecatedAtBlock = null;
+        this.chain = CHAINS.eth;
+        this.crawl = async (from, to, recrawl) => {
+            await handleTransfer.call(this, from, to, recrawl);
+        };
+        this.fetchMetadata = async (nft) => {
+            nft.erc721.token.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft);
             try {
-                nft.erc721.token.uriContent = await getIpfsTokenUri(nft.erc721.token.uri, this.worker, this.config);
+                nft.erc721.token.uriContent = (await getIpfsTokenUri.call(this, nft.erc721.token.uri));
             }
             catch (err) {
                 if (err.message.includes("Invalid CID")) {
@@ -34,6 +43,7 @@ export default class CatalogV2 {
                 version: CatalogV2.version,
                 title: datum.title,
                 duration,
+                uid: await this.nftToUid(nft),
                 artist: {
                     version: CatalogV2.version,
                     name: datum.artist,
@@ -45,23 +55,30 @@ export default class CatalogV2 {
                     uri: "https://catalog.works",
                 },
                 erc721: {
-                    transaction: {
-                        from: nft.erc721.transaction.from,
-                        to: nft.erc721.transaction.to,
-                        blockNumber: nft.erc721.transaction.blockNumber,
-                        transactionHash: nft.erc721.transaction.transactionHash,
-                    },
                     version: CatalogV2.version,
                     createdAt: nft.erc721.blockNumber,
-                    tokenId: nft.erc721.token.id,
                     address: nft.erc721.address,
-                    tokenURI: nft.erc721.token.uri,
-                    metadata: {
-                        ...datum,
-                        name: datum.name,
-                        description: datum.description,
-                        image: datum.image,
-                    },
+                    tokens: [
+                        {
+                            id: nft.erc721.token.id,
+                            uri: nft.erc721.token.uri,
+                            metadata: {
+                                ...datum,
+                                name: datum.name,
+                                description: datum.description,
+                                image: datum.image,
+                            },
+                            owners: [
+                                {
+                                    from: nft.erc721.transaction.from,
+                                    to: nft.erc721.transaction.to,
+                                    blockNumber: nft.erc721.blockNumber,
+                                    transactionHash: nft.erc721.transaction.transactionHash,
+                                    alias: undefined,
+                                },
+                            ],
+                        },
+                    ],
                 },
                 manifestations: [
                     {
@@ -77,8 +94,9 @@ export default class CatalogV2 {
                 ],
             };
         };
+        this.nftToUid = async (nft) => `${this.chain}/${CatalogV2.name}/${nft.erc721.address.toLowerCase()}/${nft.erc721.token.id}`;
         this.callCreator = async (to, blockNumber, tokenId) => {
-            const rpc = randomItem(this.config.rpc);
+            const rpc = randomItem(this.config.chain[this.chain].rpc);
             const data = encodeFunctionCall({
                 name: "creator",
                 type: "function",
@@ -117,9 +135,19 @@ export default class CatalogV2 {
         };
         this.worker = worker;
         this.config = config;
+        this.localStorage = localStorage.sublevel(CatalogV2.name, {
+            valueEncoding: "json",
+        });
+        this.contracts = this.localStorage.sublevel("contracts", {
+            valueEncoding: "json",
+        });
+        const CATALOG_NFT_CONTRACT = "0x0bC2A24ce568DAd89691116d5B34DEB6C203F342";
+        this.contracts.put(CATALOG_NFT_CONTRACT, {
+            name: CatalogV2.name,
+            version: CatalogV2.version,
+        });
     }
-    updateOwner(nft) { }
 }
 CatalogV2.version = "2.0.0";
-CatalogV2.createdAtBlock = 0;
-CatalogV2.deprecatedAtBlock = null;
+// The Catalog contract was deployed at https://etherscan.io/tx/0x65a0c575267dae42937363299c58cb0d30e35b0a6741ff0dc079ffd927c8e1b2
+CatalogV2.createdAtBlock = 14566826;

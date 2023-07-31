@@ -1,6 +1,6 @@
 import { encodeFunctionCall, decodeParameters, toHex } from "eth-fun";
 import { randomItem } from "../utils.js";
-export async function callTokenUri(worker, config, blockNumber, nft, overrideSignature) {
+export async function callTokenUri(blockNumber, nft, overrideSignature) {
     const signature = overrideSignature ?? {
         name: "tokenURI",
         type: "function",
@@ -11,7 +11,7 @@ export async function callTokenUri(worker, config, blockNumber, nft, overrideSig
             },
         ],
     };
-    const rpc = randomItem(config.rpc);
+    const rpc = randomItem(this.config.chain[this.chain].rpc);
     const options = {
         url: rpc.url,
         ...(rpc.key && {
@@ -40,7 +40,7 @@ export async function callTokenUri(worker, config, blockNumber, nft, overrideSig
             toHex(blockNumber),
         ],
     };
-    const ret = await worker(msg);
+    const ret = await this.worker(msg);
     if (ret.error)
         throw new Error(`Error while calling tokenURI on contract: ${JSON.stringify(ret, null, 2)}`);
     const uri = decodeParameters(["string"], ret.results)[0];
