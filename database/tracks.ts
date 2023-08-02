@@ -69,7 +69,7 @@ export class Tracks {
         .onConflict(["uid"])
         .merge();
 
-      await trx("manifesations")
+      await trx("manifestations")
         .insert(
           track.manifestations.map((m) => ({
             version: m.version,
