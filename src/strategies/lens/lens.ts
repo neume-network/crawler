@@ -20,6 +20,7 @@ import { tracksDB } from "../../../database/tracks.js";
 import { handleTransfer } from "../../components/handle-transfer.js";
 import { getAlias, getCollectNFT, getHandle } from "./components.js";
 import { z } from "zod";
+import { breakdownIpfs } from "ipfs-uri-utils";
 
 // Post from Lens
 type Post = {
@@ -374,6 +375,12 @@ export default class Lens implements Strategy {
         }
         datum = await getArweaveTokenUri(post.contentURI, this.worker, this.config);
       } else if (protocol === PROTOCOLS.ipfs) {
+        // Check IPFS URI before fetching. Ignore incorrect URIs.
+        try {
+          breakdownIpfs(post.contentURI);
+        } catch {
+          return null;
+        }
         datum = await getIpfsTokenUri.call(this, post.contentURI);
       } else if (protocol === PROTOCOLS.https) {
         datum = await fetchTokenUri(post.contentURI, this.worker);
