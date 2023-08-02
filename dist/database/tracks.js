@@ -57,8 +57,8 @@ export class Tracks {
                     })
                         .onConflict(["uid", "id"])
                         .merge();
-                    await Promise.all(owners.map((o) => trx("owners")
-                        .insert({
+                    await trx("owners")
+                        .insert(owners.map((o) => ({
                         blockNumber: o.blockNumber,
                         from: o.from,
                         to: o.to,
@@ -66,9 +66,9 @@ export class Tracks {
                         alias: o.alias,
                         uid: track.uid,
                         id: token.id,
-                    })
+                    })))
                         .onConflict(["uid", "id", "transactionHash", "to"])
-                        .merge()));
+                        .merge();
                 }));
                 const inputs = [track, timestamp];
                 await this.log?.put(`${track.platform.name}/${this.encodeNumber(timestamp)}/${hashCode(JSON.stringify(inputs))}`, {
@@ -95,6 +95,32 @@ export class Tracks {
             await this.log?.put(`${platform}/${this.encodeNumber(timestamp)}/${hashCode(JSON.stringify(inputs))}`, {
                 operation: "upsertOwner",
                 inputs,
+            });
+        };
+        this.upsertToken = async (uid, token, timestamp = Date.now()) => {
+            return this.db.transaction(async (trx) => {
+                await trx("tracks").update({ lastUpdatedAt: timestamp }).where("uid", "=", uid);
+                await trx("tokens")
+                    .insert({
+                    id: token.id,
+                    uri: token.uri,
+                    metadata: token.metadata,
+                    uid: uid,
+                })
+                    .onConflict(["uid", "id"])
+                    .merge();
+                await trx("owners")
+                    .insert(token.owners.map((o) => ({
+                    blockNumber: o.blockNumber,
+                    from: o.from,
+                    to: o.to,
+                    transactionHash: o.transactionHash,
+                    alias: o.alias,
+                    uid: uid,
+                    id: token.id,
+                })))
+                    .onConflict(["uid", "id", "transactionHash", "to"])
+                    .merge();
             });
         };
         this.isOwnerPresent = async (uid, tokenId, owner) => {

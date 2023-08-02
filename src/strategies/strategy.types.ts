@@ -1,5 +1,5 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
-import { Track } from "@neume-network/schema";
+import { Token, Track } from "@neume-network/schema";
 import { AbstractSublevel } from "abstract-level";
 import { Level } from "level";
 import { CHAINS, Config, Contract, NFT } from "../types.js";
@@ -61,5 +61,5 @@ export declare class ERC721Strategy extends Strategy {
    **/
   contracts: AbstractSublevel<Strategy['localStorage'], any, string, Contract>;
 
-  fetchMetadata: (nft: NFT) => Promise<Track | null>;
+  fetchMetadata: (nft: NFT) => Promise<Track | Token | null>;
 }

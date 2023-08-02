@@ -65,12 +65,19 @@ async function _handleTransfer(from, to, recrawl) {
                     if (await tracksDB.isTokenPresent(uid, nft.erc721.token.id))
                         return;
                 }
-                // console.log(`fetching metadata for ${this.constructor.name}`, uid);
-                const track = await this.fetchMetadata(nft);
-                if (track) {
-                    console.log("Found new NFT (could be a new track):", track?.title, nft.erc721.token.id, track?.platform.version, track?.platform.name, "at", nft.erc721.blockNumber);
-                    await tracksDB.upsertTrack(track);
+                const ret = await this.fetchMetadata(nft);
+                if (!ret)
+                    return;
+                if (isToken(ret)) {
+                    const token = ret;
+                    const uid = await this.nftToUid(nft);
+                    console.log("Found new NFT for an existing track", uid, nft.erc721.token.id, "at", nft.erc721.blockNumber);
+                    tracksDB.upsertToken(uid, token);
+                    return;
                 }
+                const track = ret;
+                console.log("Found new NFT (could be a new track):", track?.title, nft.erc721.token.id, track?.platform.version, track?.platform.name, "at", nft.erc721.blockNumber);
+                await tracksDB.upsertTrack(track);
             });
             mintNFTsPromise.push(...promises);
             allTransferNFTs.push(...transferNfts);
@@ -130,4 +137,9 @@ function prepareNFT(log) {
         },
         metadata: {},
     };
+}
+function isToken(data) {
+    if ("uid" in data)
+        return false;
+    return true;
 }

@@ -62,8 +62,7 @@ export default class SoundProtocol {
             const uid = await this.nftToUid(nft);
             if (await tracksDB.isTrackPresent(uid)) {
                 // Metadata already present, don't fetch from arweave again.
-                const track = await tracksDB.getTrack(uid);
-                track.erc721.tokens.push({
+                return {
                     id: nft.erc721.token.id,
                     owners: [
                         {
@@ -74,8 +73,7 @@ export default class SoundProtocol {
                             alias: undefined,
                         },
                     ],
-                });
-                return track;
+                };
             }
             nft.erc721.token.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft);
             if (!nft.erc721.token.uri.includes("ar://")) {

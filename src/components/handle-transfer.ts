@@ -4,6 +4,7 @@ import { ethGetLogs } from "./eth-get-logs.js";
 import { tracksDB } from "../../database/tracks.js";
 import Lens from "../strategies/lens/lens.js";
 import { ERC721Strategy } from "../strategies/strategy.types.js";
+import { Token, Track } from "@neume-network/schema";
 
 const TRANSFER_EVENT_SELECTOR =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -100,22 +101,37 @@ async function _handleTransfer(
           if (await tracksDB.isTokenPresent(uid, nft.erc721.token.id)) return;
         }
 
-        // console.log(`fetching metadata for ${this.constructor.name}`, uid);
-        const track = await this.fetchMetadata(nft);
+        const ret = await this.fetchMetadata(nft);
 
-        if (track) {
+        if (!ret) return;
+
+        if (isToken(ret)) {
+          const token = ret;
+          const uid = await this.nftToUid(nft);
           console.log(
-            "Found new NFT (could be a new track):",
-            track?.title,
+            "Found new NFT for an existing track",
+            uid,
             nft.erc721.token.id,
-            track?.platform.version,
-            track?.platform.name,
             "at",
             nft.erc721.blockNumber,
           );
 
-          await tracksDB.upsertTrack(track);
+          tracksDB.upsertToken(uid, token);
+
+          return;
         }
+
+        const track = ret;
+        console.log(
+          "Found new NFT (could be a new track):",
+          track?.title,
+          nft.erc721.token.id,
+          track?.platform.version,
+          track?.platform.name,
+          "at",
+          nft.erc721.blockNumber,
+        );
+        await tracksDB.upsertTrack(track);
       });
 
       mintNFTsPromise.push(...promises);
@@ -199,4 +215,9 @@ function prepareNFT(log: JsonRpcLog): NFT {
     },
     metadata: {},
   };
+}
+
+function isToken(data: Track | Token): data is Token {
+  if ("uid" in data) return false;
+  return true;
 }

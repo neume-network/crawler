@@ -1,5 +1,5 @@
 import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
-import { Track } from "@neume-network/schema";
+import { Token, Track } from "@neume-network/schema";
 import { Level } from "level";
 import { decodeLog } from "eth-fun";
 import { AbstractSublevel } from "abstract-level";
@@ -96,7 +96,7 @@ export default class SoundProtocol implements ERC721Strategy {
   nftToUid = async (nft: NFT) =>
     `${this.chain}/${SoundProtocol.name}/${nft.erc721.address.toLowerCase()}`;
 
-  fetchMetadata = async (nft: NFT): Promise<Track | null> => {
+  fetchMetadata = async (nft: NFT): Promise<Track | Token | null> => {
     if (
       SoundProtocol.invalidIDs.filter((id) =>
         `${nft.erc721.address}/${nft.erc721.token.id}`.match(id),
@@ -112,9 +112,7 @@ export default class SoundProtocol implements ERC721Strategy {
 
     if (await tracksDB.isTrackPresent(uid)) {
       // Metadata already present, don't fetch from arweave again.
-      const track = await tracksDB.getTrack(uid);
-
-      track.erc721.tokens.push({
+      return {
         id: nft.erc721.token.id,
         owners: [
           {
@@ -125,9 +123,7 @@ export default class SoundProtocol implements ERC721Strategy {
             alias: undefined,
           },
         ],
-      });
-
-      return track;
+      };
     }
 
     nft.erc721.token.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft);

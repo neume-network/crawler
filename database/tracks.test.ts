@@ -1,8 +1,9 @@
+import { Track } from "@neume-network/schema";
 import test from "ava";
 import runMigration from "./runMigration.js";
 import { tracksDB } from "./tracks.js";
 
-test.beforeEach(async () => {
+test.beforeEach(async (t) => {
   await runMigration("up");
   await runMigration("down");
   await runMigration("up");
@@ -227,10 +228,41 @@ test.serial("should be able to get changed tracks", async (t) => {
   t.is(tracks.length, 1);
 });
 
-test("should be able to update track", async (t) => {
+test.serial("should be able to update track", async (t) => {
   await tracksDB.upsertTrack(sample[0], 0);
-  const newTrack = { ...sample[0], title: "New Title" };
+  // adding a new owner to sample[0]
+  const newTrack: Track = {
+    ...sample[0],
+    erc721: {
+      ...sample[0].erc721,
+      tokens: [
+        ...sample[0].erc721.tokens,
+        {
+          ...sample[0].erc721.tokens[0],
+          id: "2",
+        },
+      ],
+    },
+  };
   await tracksDB.upsertTrack(newTrack, 0);
   const ret = await tracksDB.getTrack(sample[0].uid);
   t.deepEqual(ret, newTrack);
+});
+
+test.serial("should be able upsert token", async (t) => {
+  await tracksDB.upsertTrack(sample[0], 0);
+  const newToken = {
+    ...sample[0].erc721.tokens[0],
+    id: "2",
+  };
+  const expectedTrack: Track = {
+    ...sample[0],
+    erc721: {
+      ...sample[0].erc721,
+      tokens: [...sample[0].erc721.tokens, newToken],
+    },
+  };
+  await tracksDB.upsertToken(sample[0].uid, newToken, 1);
+  const ret = await tracksDB.getTrack(sample[0].uid);
+  t.deepEqual(ret, expectedTrack);
 });

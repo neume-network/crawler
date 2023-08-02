@@ -2,9 +2,9 @@
  * Current lens first song - 33474641
  */
 
-import ExtractionWorker, { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
-import { Track } from "@neume-network/schema";
-import { toHex, decodeLog, encodeParameters, decodeParameters } from "eth-fun";
+import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
+import { Token, Track } from "@neume-network/schema";
+import { toHex, decodeLog, encodeParameters } from "eth-fun";
 
 import { CHAINS, Config, Contract, NFT, PROTOCOLS } from "../../types.js";
 import { Strategy } from "../strategy.types.js";
@@ -315,7 +315,7 @@ export default class Lens implements Strategy {
   }
 
   // This is called when a new NFT is minted in Lens
-  fetchMetadata = async (nft: NFT): Promise<Track | null> => {
+  fetchMetadata = async (nft: NFT): Promise<Track | Token | null> => {
     let uid;
     try {
       uid = await this.addressToId.get(nft.erc721.address);
@@ -323,10 +323,10 @@ export default class Lens implements Strategy {
       console.log("Error for", nft);
       throw err;
     }
-    const track = await tracksDB.getTrack(uid);
+
     const alias = await getAlias.call(this, nft);
 
-    track.erc721.tokens.push({
+    return {
       id: nft.erc721.token.id,
       owners: [
         {
@@ -337,9 +337,7 @@ export default class Lens implements Strategy {
           alias: alias ?? undefined,
         },
       ],
-    });
-
-    return track;
+    };
   };
 
   async processPost(post: Post): Promise<Track | null> {

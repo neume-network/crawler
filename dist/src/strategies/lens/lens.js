@@ -28,9 +28,8 @@ export default class Lens {
                 console.log("Error for", nft);
                 throw err;
             }
-            const track = await tracksDB.getTrack(uid);
             const alias = await getAlias.call(this, nft);
-            track.erc721.tokens.push({
+            return {
                 id: nft.erc721.token.id,
                 owners: [
                     {
@@ -41,8 +40,7 @@ export default class Lens {
                         alias: alias ?? undefined,
                     },
                 ],
-            });
-            return track;
+            };
         };
         this.nftToUid = async (nft) => {
             return this.addressToId.get(nft.erc721.address);
