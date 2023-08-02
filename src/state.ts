@@ -3,6 +3,7 @@
  */
 
 import fs from "fs/promises";
+import writeFileAtomic from "write-file-atomic";
 import path from "path";
 import { CONSTANTS } from "./types.js";
 import { getStrategies } from "./utils.js";
@@ -25,5 +26,5 @@ export async function saveLastCrawledBlock(strategy: string, blockNumber: number
     .then(() => true)
     .catch(() => false);
   if (!fileExists) await fs.mkdir(path.dirname(location), { recursive: true });
-  return fs.writeFile(location, blockNumber.toString(), "utf-8");
+  return writeFileAtomic(location, blockNumber.toString(), "utf-8");
 }
