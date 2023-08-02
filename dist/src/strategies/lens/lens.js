@@ -258,12 +258,8 @@ export default class Lens {
             }
         }
         catch (err) {
-            if (err.message.includes("status: 4") ||
-                err.message.includes("Invalid CID") ||
-                err.message.includes("ECONNREFUSED")) {
-                return null;
-            }
-            throw err;
+            // Assuming that the problem is with the URI endpoint. Therefore, ignoring the track.
+            return null;
         }
         if (!datum || !datum.media || datum.version !== "2.0.0") {
             // console.log("No media; skipping", datum.media, datum.version);

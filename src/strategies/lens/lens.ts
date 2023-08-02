@@ -388,14 +388,8 @@ export default class Lens implements Strategy {
         throw new Error(`Invalid Protocol for ${post.contentURI}`);
       }
     } catch (err: any) {
-      if (
-        err.message.includes("status: 4") ||
-        err.message.includes("Invalid CID") ||
-        err.message.includes("ECONNREFUSED")
-      ) {
-        return null;
-      }
-      throw err;
+      // Assuming that the problem is with the URI endpoint. Therefore, ignoring the track.
+      return null;
     }
 
     if (!datum || !datum.media || datum.version !== "2.0.0") {
