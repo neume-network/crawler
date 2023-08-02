@@ -69,19 +69,17 @@ export class Tracks {
         .onConflict(["uid"])
         .merge();
 
-      await Promise.all(
-        track.manifestations.map((m) =>
-          trx("manifestations")
-            .insert({
-              version: m.version,
-              uri: m.uri,
-              mimetype: m.mimetype,
-              uid: track.uid,
-            })
-            .onConflict(["uid", "uri"])
-            .merge(),
-        ),
-      );
+      await trx("manifesations")
+        .insert(
+          track.manifestations.map((m) => ({
+            version: m.version,
+            uri: m.uri,
+            mimetype: m.mimetype,
+            uid: track.uid,
+          })),
+        )
+        .onConflict(["uid", "uri"])
+        .merge();
 
       await Promise.all(
         track.erc721.tokens.map(async (token) => {

@@ -16,6 +16,7 @@ const config = {
   pool: {
     afterCreate: function (conn, done) {
       conn.pragma("journal_mode = WAL");
+      conn.pragma("shrink_memory");
       done();
     },
   },
