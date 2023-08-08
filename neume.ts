@@ -1,21 +1,17 @@
 #!/usr/bin/env node
 
-//@ts-nocheck
-
 import "dotenv/config";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import path from "path";
 
-import crawl from "./commands/crawl.js";
-import dump from "./commands/dump.js";
-import filterContracts from "./commands/filter_contracts.js";
 import { getLatestBlockNumber, getStrategies } from "./src/utils.js";
 import daemon from "./commands/daemon.js";
 import sync from "./commands/sync.js";
 import init from "./commands/init.js";
 import { db } from "./database/index.js";
 import runMigration from "./database/runMigration.js";
+import { tracksDB } from "./database/tracks.js";
 
 const argv = yargs(hideBin(process.argv))
   .usage("Usage: $0 <command> <options>")
@@ -36,62 +32,8 @@ const argv = yargs(hideBin(process.argv))
     },
   )
   .command(
-    "crawl",
-    "Find new NFTs from the list of already known contracts",
-    {
-      from: {
-        type: "number",
-        describe: "From block number",
-        demandOption: true,
-      },
-      to: {
-        type: "number",
-        describe: "To block number",
-      },
-      recrawl: {
-        type: "boolean",
-        describe: "Re-crawl an NFT if they already exist",
-        default: false,
-      },
-    },
-    async (argv) => {
-      const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
-      const from = argv.from;
-      const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      await crawl(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
-      process.exit(0);
-    },
-  )
-  .command(
-    "filter-contracts",
-    "Find new contracts",
-    {
-      from: {
-        type: "number",
-        describe: "From block number",
-        demandOption: true,
-      },
-      to: {
-        type: "number",
-        describe: "From block number",
-      },
-      recrawl: {
-        type: "boolean",
-        describe: "Re-crawl an NFT if they already exist",
-        default: false,
-      },
-    },
-    async (argv) => {
-      const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
-      const from = argv.from;
-      const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      await filterContracts(from, to, argv.recrawl, config, getStrategies(strategyNames, from, to));
-      process.exit(0);
-    },
-  )
-  .command(
     "dump",
-    "Export database as JSON",
+    "Export database as JSON [Out of date]",
     {
       at: {
         type: "number",
@@ -100,8 +42,10 @@ const argv = yargs(hideBin(process.argv))
       },
     },
     async (argv) => {
+      throw new Error("Not Implemented");
       const { config } = await import(path.resolve("./config.js"));
       const at = argv.at ?? (await getLatestBlockNumber(config.rpc[0]));
+      // @ts-ignore
       return dump(at);
     },
   )
@@ -135,7 +79,7 @@ const argv = yargs(hideBin(process.argv))
     },
     async (argv) => {
       const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
-      await daemon(argv.from, argv.crawl, argv.recrawl, argv.port, config, strategyNames);
+      await daemon(argv.crawl, argv.recrawl, argv.port, config, strategyNames);
     },
   )
   .command(
@@ -147,23 +91,16 @@ const argv = yargs(hideBin(process.argv))
         describe: "An endpoint that is running the neume-network daemon",
         demandOption: true,
       },
-      from: {
+      since: {
         type: "number",
-        describe: "From block number",
-        defaultDescription: "Uses the database to calculate the last synced block",
-      },
-      to: {
-        type: "number",
-        describe: "To block number",
-        defaultDescription: "Syncs to the latest block number",
+        describe: "`since` is a timestamp. Neume will fetch changes since the provided timestamp.",
+        defaultDescription: "Uses the database to find the last synced timestamp",
       },
     },
     async (argv) => {
       const { config, strategies: strategyNames } = await import(path.resolve("./config.js"));
-      const to = argv.to ?? (await getLatestBlockNumber(config.rpc[0]));
-      // @ts-ignore
-      await sync(argv.from, to, argv.url, config);
-      process.exit(0);
+      await sync(argv.since, argv.url, config, getStrategies(strategyNames));
+      await tracksDB.close();
     },
   )
   .command("create-change-index", "Create change index from primary database", async (argv) => {

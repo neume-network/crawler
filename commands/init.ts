@@ -1,18 +1,32 @@
 import path from "path";
 import fs from "fs/promises";
 import { saveLastCrawledBlock } from "../src/state.js";
-import { CONSTANTS } from "../src/types.js";
+import { CHAINS, CONSTANTS } from "../src/types.js";
+import runMigration from "../database/runMigration.js";
 
 export default async function init() {
-  await fs.copyFile(new URL("../assets/.env-copy", import.meta.url), path.resolve(".env"));
-  await fs.copyFile(
-    new URL("../assets/config.sample.js", import.meta.url),
-    path.resolve("./config.js"),
-  );
-  // Will create file if it does not exist
-  await fs.writeFile(path.resolve("./data/contracts.json"), "{}", {
-    flag: "w",
-  });
-  // Create the last_crawled_block file in ./data
-  await saveLastCrawledBlock(CONSTANTS.FIRST_BLOCK);
+  let fileExists;
+
+  // .env
+  fileExists = await fs
+    .access(path.resolve(".env"), fs.constants.F_OK)
+    .then(() => true)
+    .catch(() => false);
+
+  if (!fileExists)
+    await fs.copyFile(new URL("../assets/.env-copy", import.meta.url), path.resolve(".env"));
+
+  // config.js
+  fileExists = await fs
+    .access(path.resolve("./config.js"), fs.constants.F_OK)
+    .then(() => true)
+    .catch(() => false);
+
+  if (!fileExists)
+    await fs.copyFile(
+      new URL("../assets/config.sample.js", import.meta.url),
+      path.resolve("./config.js"),
+    );
+
+  await runMigration("up");
 }

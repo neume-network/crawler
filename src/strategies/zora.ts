@@ -10,32 +10,48 @@ import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { anyIpfsToNativeIpfs } from "ipfs-uri-utils";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
-import { NFT, Config } from "../types.js";
+import { NFT, Config, CHAINS, Contract } from "../types.js";
 import { randomItem } from "../utils.js";
 
-import { Strategy } from "./strategy.types.js";
+import { ERC721Strategy } from "./strategy.types.js";
+import { handleTransfer } from "../components/handle-transfer.js";
+import { AbstractSublevel } from "abstract-level";
+import { Level } from "level";
+import { localStorage } from "../../database/localstorage.js";
 
-export default class Zora implements Strategy {
-  public static version = "1.0.0";
-  public static createdAtBlock = 11996516; // First catalog song: https://etherscan.io/nft/0xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7/1678
+export default class Zora implements ERC721Strategy {
+  static version = "1.0.0";
+  static createdAtBlock = 11996516;
+  createdAtBlock = Zora.createdAtBlock; // First catalog song: https://etherscan.io/nft/0xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7/1678
   // Last song on Zora contract: https://beta.catalog.works/lucalush/velvet-girls
   // https://cloud.hasura.io/public/graphiql?endpoint=https%3A%2F%2Fcatalog-prod.hasura.app%2Fv1%2Fgraphql&query=query+MyQuery+%7B%0A++tracks%28%0A++++where%3A+%7Bcontract_address%3A+%7B_iregex%3A+%220xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7%22%7D%7D%0A++++order_by%3A+%7Bcreated_at%3A+desc%7D%0A++%29+%7B%0A++++created_at%0A++++contract_address%0A++++short_url%0A++++title%0A++++nft_id%0A++%7D%0A%7D%0A
-  public static deprecatedAtBlock = null;
-  private worker: ExtractionWorkerHandler;
-  private config: Config;
+  deprecatedAtBlock = null;
+  worker: ExtractionWorkerHandler;
+  config: Config;
+  chain = CHAINS.eth;
+  localStorage: AbstractSublevel<Level<string, any>, string | Buffer | Uint8Array, string, any>;
+  contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
     this.config = config;
+    this.localStorage = localStorage.sublevel(Zora.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel("contracts", {
+      valueEncoding: "json",
+    });
+
+    const ZORA_NFT_CONTRACT = "0xabefbc9fd2f806065b4f3c237d4b59d9a97bcac7";
+    this.contracts.put(ZORA_NFT_CONTRACT, { name: Zora.name, version: Zora.version });
   }
 
-  async crawl(nft: NFT) {
-    nft.erc721.token.uri = await callTokenUri(
-      this.worker,
-      this.config,
-      nft.erc721.blockNumber,
-      nft,
-    );
+  crawl = async (from: number, to: number, recrawl: boolean) => {
+    await handleTransfer.call(this, from, to, recrawl);
+  };
+
+  fetchMetadata = async (nft: NFT) => {
+    nft.erc721.token.uri = (await callTokenUri.call(this, nft.erc721.blockNumber, nft)) as string;
 
     try {
       nft.erc721.token.uri = anyIpfsToNativeIpfs(nft.erc721.token.uri);
@@ -48,7 +64,7 @@ export default class Zora implements Strategy {
       return null;
     }
 
-    nft.metadata.uri = await callTokenUri(this.worker, this.config, nft.erc721.blockNumber, nft, {
+    nft.metadata.uri = await callTokenUri.call(this, nft.erc721.blockNumber, nft, {
       name: "tokenMetadataURI",
       type: "function",
       inputs: [
@@ -71,7 +87,7 @@ export default class Zora implements Strategy {
     }
 
     try {
-      nft.metadata.uriContent = await getIpfsTokenUri(nft.metadata.uri, this.worker, this.config);
+      nft.metadata.uriContent = await getIpfsTokenUri.call(this, nft.metadata.uri);
     } catch (err: any) {
       if (err.message.includes("Invalid CID")) {
         console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
@@ -115,6 +131,7 @@ export default class Zora implements Strategy {
       version: Zora.version,
       title,
       duration,
+      uid: await this.nftToUid(nft),
       artist: {
         version: Zora.version,
         name: artist,
@@ -128,21 +145,28 @@ export default class Zora implements Strategy {
       erc721: {
         version: Zora.version,
         createdAt: nft.erc721.blockNumber,
-        transaction: {
-          from: nft.erc721.transaction.from,
-          to: nft.erc721.transaction.to,
-          blockNumber: nft.erc721.transaction.blockNumber,
-          transactionHash: nft.erc721.transaction.transactionHash,
-        },
         address: nft.erc721.address,
-        tokenId: nft.erc721.token.id,
-        tokenURI: nft.erc721.token.uri,
-        metadata: {
-          ...datum,
-          name: title,
-          description,
-          // TODO: add image here
-        },
+        tokens: [
+          {
+            id: nft.erc721.token.id,
+            uri: nft.erc721.token.uri,
+            metadata: {
+              ...datum,
+              name: title,
+              description,
+              // TODO: add image here
+            },
+            owners: [
+              {
+                from: nft.erc721.transaction.from,
+                to: nft.erc721.transaction.to,
+                blockNumber: nft.erc721.blockNumber,
+                transactionHash: nft.erc721.transaction.transactionHash,
+                alias: undefined,
+              },
+            ],
+          },
+        ],
       },
       manifestations: [
         {
@@ -157,16 +181,17 @@ export default class Zora implements Strategy {
         },
       ],
     } as Track;
-  }
+  };
 
-  updateOwner(nft: NFT) {}
+  nftToUid = async (nft: NFT) =>
+    `${this.chain}/${Zora.name}/${nft.erc721.address.toLowerCase()}/${nft.erc721.token.id}`;
 
   private callTokenCreator = async (
     to: string,
     blockNumber: number,
     tokenId: string,
   ): Promise<string> => {
-    const rpc = randomItem(this.config.rpc);
+    const rpc = randomItem(this.config.chain[this.chain].rpc);
     const data = encodeFunctionCall(
       {
         name: "tokenCreators",

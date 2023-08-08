@@ -1,3 +1,7 @@
+/**
+ * This file is outdated.
+ */
+
 import { Track } from "@neume-network/schema";
 import fs from "fs";
 import { writeFile, mkdir } from "fs/promises";

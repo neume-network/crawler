@@ -12,29 +12,52 @@ import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
-import { Config, NFT } from "../types.js";
+import { CHAINS, Config, Contract, NFT } from "../types.js";
 import { randomItem } from "../utils.js";
-import { Strategy } from "./strategy.types.js";
+import { ERC721Strategy, Strategy } from "./strategy.types.js";
+import { AbstractSublevel } from "abstract-level";
+import { Level } from "level";
+import { handleTransfer } from "../components/handle-transfer.js";
+import { localStorage } from "../../database/localstorage.js";
 
-export default class MintSongsV2 implements Strategy {
+export default class MintSongsV2 implements ERC721Strategy {
   public static version = "2.0.0";
   // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
-  public static createdAtBlock = 14799837;
-  public static deprecatedAtBlock = null;
-  public static invalidIDs = [
+  static createdAtBlock = 14799837;
+  createdAtBlock = MintSongsV2.createdAtBlock;
+  deprecatedAtBlock = null;
+  static invalidIDs = [
     /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/, // Ignore track because URI contains a space at the end
     /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/113$/, // NFT has been burned
   ];
-
-  private worker: ExtractionWorkerHandler;
-  private config: Config;
+  chain = CHAINS.eth;
+  worker: ExtractionWorkerHandler;
+  config: Config;
+  localStorage: AbstractSublevel<Level<string, any>, string | Buffer | Uint8Array, string, any>;
+  contracts: AbstractSublevel<typeof this.localStorage, any, string, Contract>;
 
   constructor(worker: ExtractionWorkerHandler, config: Config) {
     this.worker = worker;
     this.config = config;
+    this.localStorage = localStorage.sublevel(MintSongsV2.name, {
+      valueEncoding: "json",
+    });
+    this.contracts = this.localStorage.sublevel("contracts", {
+      valueEncoding: "json",
+    });
+
+    const MINGSONGS_NFT_CONTRACT = "0x2b5426a5b98a3e366230eba9f95a24f09ae4a584";
+    this.contracts.put(MINGSONGS_NFT_CONTRACT, {
+      name: MintSongsV2.name,
+      version: MintSongsV2.version,
+    });
   }
 
-  crawl = async (nft: NFT) => {
+  crawl = async (from: number, to: number, recrawl: boolean) => {
+    await handleTransfer.call(this, from, to, recrawl);
+  };
+
+  fetchMetadata = async (nft: NFT) => {
     // Crawling MintSongs at this block number or higher
     // because the contract is broken at the block the NFTs
     // were minted. Contract was upgraded later many times.
@@ -51,18 +74,16 @@ export default class MintSongsV2 implements Strategy {
       return null;
     }
 
-    nft.erc721.token.uri = await callTokenUri(
-      this.worker,
-      this.config,
+    nft.erc721.token.uri = await callTokenUri.call(
+      this,
       Math.max(nft.erc721.blockNumber, BLOCK_NUMBER),
       nft,
     );
     try {
-      nft.erc721.token.uriContent = await getIpfsTokenUri(
+      nft.erc721.token.uriContent = (await getIpfsTokenUri.call(
+        this,
         nft.erc721.token.uri,
-        this.worker,
-        this.config,
-      );
+      )) as Record<string, any>;
     } catch (err: any) {
       if (err.message.includes("Invalid CID")) {
         console.warn("Invalid CID: Ignoring the given track.", JSON.stringify(nft, null, 2));
@@ -94,6 +115,7 @@ export default class MintSongsV2 implements Strategy {
       version: MintSongsV2.version,
       title: datum.title,
       duration,
+      uid: await this.nftToUid(nft),
       artist: {
         version: MintSongsV2.version,
         name: datum.artist,
@@ -105,23 +127,30 @@ export default class MintSongsV2 implements Strategy {
         uri: "https://www.mintsongs.com/",
       },
       erc721: {
-        transaction: {
-          from: nft.erc721.transaction.from,
-          to: nft.erc721.transaction.to,
-          blockNumber: nft.erc721.transaction.blockNumber,
-          transactionHash: nft.erc721.transaction.transactionHash,
-        },
         version: MintSongsV2.version,
         createdAt: nft.erc721.blockNumber,
-        tokenId: nft.erc721.token.id,
         address: nft.erc721.address,
-        tokenURI: nft.erc721.token.uri,
-        metadata: {
-          ...datum,
-          name: datum.title,
-          description: datum.description,
-          image: datum.image,
-        },
+        tokens: [
+          {
+            id: nft.erc721.token.id,
+            uri: nft.erc721.token.uri,
+            metadata: {
+              ...datum,
+              name: datum.title,
+              description: datum.description,
+              image: datum.image,
+            },
+            owners: [
+              {
+                from: nft.erc721.transaction.from,
+                to: nft.erc721.transaction.to,
+                blockNumber: nft.erc721.blockNumber,
+                transactionHash: nft.erc721.transaction.transactionHash,
+                alias: undefined,
+              },
+            ],
+          },
+        ],
       },
       manifestations: [
         {
@@ -138,14 +167,15 @@ export default class MintSongsV2 implements Strategy {
     };
   };
 
-  updateOwner(nft: NFT) {}
+  nftToUid = async (nft: NFT) =>
+    `${this.chain}/${MintSongsV2.name}/${nft.erc721.address.toLowerCase()}/${nft.erc721.token.id}`;
 
   private callTokenCreator = async (
     to: string,
     blockNumber: number,
     tokenId: string,
   ): Promise<string> => {
-    const rpc = randomItem(this.config.rpc);
+    const rpc = randomItem(this.config.chain[this.chain].rpc);
     const data = encodeFunctionCall(
       {
         name: "tokenCreator",

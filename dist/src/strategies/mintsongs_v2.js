@@ -10,10 +10,19 @@
 import { toHex, encodeFunctionCall, decodeParameters } from "eth-fun";
 import { callTokenUri } from "../components/call-tokenuri.js";
 import { getIpfsTokenUri } from "../components/get-ipfs-tokenuri.js";
+import { CHAINS } from "../types.js";
 import { randomItem } from "../utils.js";
+import { handleTransfer } from "../components/handle-transfer.js";
+import { localStorage } from "../../database/localstorage.js";
 export default class MintSongsV2 {
     constructor(worker, config) {
-        this.crawl = async (nft) => {
+        this.createdAtBlock = MintSongsV2.createdAtBlock;
+        this.deprecatedAtBlock = null;
+        this.chain = CHAINS.eth;
+        this.crawl = async (from, to, recrawl) => {
+            await handleTransfer.call(this, from, to, recrawl);
+        };
+        this.fetchMetadata = async (nft) => {
             // Crawling MintSongs at this block number or higher
             // because the contract is broken at the block the NFTs
             // were minted. Contract was upgraded later many times.
@@ -22,9 +31,9 @@ export default class MintSongsV2 {
                 console.log(`Ignoring ${nft.erc721.address}/${nft.erc721.token.id} because it is blacklisted`);
                 return null;
             }
-            nft.erc721.token.uri = await callTokenUri(this.worker, this.config, Math.max(nft.erc721.blockNumber, BLOCK_NUMBER), nft);
+            nft.erc721.token.uri = await callTokenUri.call(this, Math.max(nft.erc721.blockNumber, BLOCK_NUMBER), nft);
             try {
-                nft.erc721.token.uriContent = await getIpfsTokenUri(nft.erc721.token.uri, this.worker, this.config);
+                nft.erc721.token.uriContent = (await getIpfsTokenUri.call(this, nft.erc721.token.uri));
             }
             catch (err) {
                 if (err.message.includes("Invalid CID")) {
@@ -47,6 +56,7 @@ export default class MintSongsV2 {
                 version: MintSongsV2.version,
                 title: datum.title,
                 duration,
+                uid: await this.nftToUid(nft),
                 artist: {
                     version: MintSongsV2.version,
                     name: datum.artist,
@@ -58,23 +68,30 @@ export default class MintSongsV2 {
                     uri: "https://www.mintsongs.com/",
                 },
                 erc721: {
-                    transaction: {
-                        from: nft.erc721.transaction.from,
-                        to: nft.erc721.transaction.to,
-                        blockNumber: nft.erc721.transaction.blockNumber,
-                        transactionHash: nft.erc721.transaction.transactionHash,
-                    },
                     version: MintSongsV2.version,
                     createdAt: nft.erc721.blockNumber,
-                    tokenId: nft.erc721.token.id,
                     address: nft.erc721.address,
-                    tokenURI: nft.erc721.token.uri,
-                    metadata: {
-                        ...datum,
-                        name: datum.title,
-                        description: datum.description,
-                        image: datum.image,
-                    },
+                    tokens: [
+                        {
+                            id: nft.erc721.token.id,
+                            uri: nft.erc721.token.uri,
+                            metadata: {
+                                ...datum,
+                                name: datum.title,
+                                description: datum.description,
+                                image: datum.image,
+                            },
+                            owners: [
+                                {
+                                    from: nft.erc721.transaction.from,
+                                    to: nft.erc721.transaction.to,
+                                    blockNumber: nft.erc721.blockNumber,
+                                    transactionHash: nft.erc721.transaction.transactionHash,
+                                    alias: undefined,
+                                },
+                            ],
+                        },
+                    ],
                 },
                 manifestations: [
                     {
@@ -90,8 +107,9 @@ export default class MintSongsV2 {
                 ],
             };
         };
+        this.nftToUid = async (nft) => `${this.chain}/${MintSongsV2.name}/${nft.erc721.address.toLowerCase()}/${nft.erc721.token.id}`;
         this.callTokenCreator = async (to, blockNumber, tokenId) => {
-            const rpc = randomItem(this.config.rpc);
+            const rpc = randomItem(this.config.chain[this.chain].rpc);
             const data = encodeFunctionCall({
                 name: "tokenCreator",
                 type: "function",
@@ -130,13 +148,22 @@ export default class MintSongsV2 {
         };
         this.worker = worker;
         this.config = config;
+        this.localStorage = localStorage.sublevel(MintSongsV2.name, {
+            valueEncoding: "json",
+        });
+        this.contracts = this.localStorage.sublevel("contracts", {
+            valueEncoding: "json",
+        });
+        const MINGSONGS_NFT_CONTRACT = "0x2b5426a5b98a3e366230eba9f95a24f09ae4a584";
+        this.contracts.put(MINGSONGS_NFT_CONTRACT, {
+            name: MintSongsV2.name,
+            version: MintSongsV2.version,
+        });
     }
-    updateOwner(nft) { }
 }
 MintSongsV2.version = "2.0.0";
 // Oldest NFT mint found using OpenSea: https://etherscan.io/tx/0x4dd17de92c1d1ae0a7d17c127c57d99fd509f1b22dd176a483e5587fddf7e0a0
 MintSongsV2.createdAtBlock = 14799837;
-MintSongsV2.deprecatedAtBlock = null;
 MintSongsV2.invalidIDs = [
     /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/13$/,
     /^0x2b5426a5b98a3e366230eba9f95a24f09ae4a584\/113$/, // NFT has been burned

@@ -1,11 +1,9 @@
 import { toHex, encodeFunctionSignature, decodeParameters } from "eth-fun";
 import { randomItem } from "../utils.js";
-export async function callOwner(worker, config, to, blockNumber) {
-    if (!config.rpc.length)
-        throw new Error("Atleast one RPC host is required");
-    const rpc = randomItem(config.rpc);
+export async function callOwner(to, blockNumber) {
+    const rpc = randomItem(this.config.chain[this.chain].rpc);
     const data = encodeFunctionSignature("owner()");
-    const msg = await worker({
+    const msg = await this.worker({
         type: "json-rpc",
         commissioner: "",
         version: "0.0.1",

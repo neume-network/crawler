@@ -1,19 +1,11 @@
-import { ExtractionWorkerHandler } from "@neume-network/extraction-worker";
 import { toHex, encodeFunctionSignature, decodeParameters } from "eth-fun";
-import { Config } from "../types.js";
+import { Strategy } from "../strategies/strategy.types.js";
 import { randomItem } from "../utils.js";
 
-export async function callOwner(
-  worker: ExtractionWorkerHandler,
-  config: Config,
-  to: string,
-  blockNumber: number,
-): Promise<string> {
-  if (!config.rpc.length) throw new Error("Atleast one RPC host is required");
-
-  const rpc = randomItem(config.rpc);
+export async function callOwner(this: Strategy, to: string, blockNumber: number): Promise<string> {
+  const rpc = randomItem(this.config.chain[this.chain].rpc);
   const data = encodeFunctionSignature("owner()");
-  const msg = await worker({
+  const msg = await this.worker({
     type: "json-rpc",
     commissioner: "",
     version: "0.0.1",

@@ -9,8 +9,8 @@
   },
   "scripts": {
     "start": "node ./dist/neume.js",
-    "build": "npm run compile-schemas && tsc -b",
-    "postbuild": "cp -r ./assets ./dist",
+    "build": "npm run compile-schemas && tsc -b --force",
+    "postbuild": "cp -r ./assets ./dist && cp -r ./database/migrations ./dist/database",
     "compile-schemas": "node commands/daemon/daemon-jsonrpc-schema.js > commands/daemon/daemon-jsonrpc-type.d.ts",
     "test": "ava"
   },
@@ -18,9 +18,10 @@
   "author": "",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@neume-network/extraction-worker": "github:neume-network/extraction-worker",
+    "@neume-network/extraction-worker": "github:neume-network/extraction-worker#64e1e5110aa4ccdd503ca88c445654d94d3b8dd3",
     "@neume-network/schema": "github:neume-network/schema",
     "ava": "^5.1.0",
+    "better-sqlite3": "^8.2.0",
     "dotenv": "^16.0.3",
     "eth-fun": "^0.9.2",
     "fastify": "^4.10.2",
@@ -28,15 +29,19 @@
     "json-canonicalize": "^1.0.4",
     "json-rpc-2.0": "^1.4.2",
     "json-schema-to-typescript": "^11.0.2",
+    "knex": "^2.4.2",
     "level": "^8.0.0",
     "p-map": "^5.5.0",
-    "yargs": "^17.6.2"
+    "write-file-atomic": "^5.0.1",
+    "yargs": "^17.6.2",
+    "zod": "^3.21.4"
   },
   "engines": {
     "node": "16"
   },
   "devDependencies": {
     "@types/node": "^18.11.9",
+    "@types/write-file-atomic": "^4.0.0",
     "@types/yargs": "^17.0.14",
     "ts-node": "^10.9.1",
     "typescript": "^4.8.4"

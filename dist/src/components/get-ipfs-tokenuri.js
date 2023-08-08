@@ -1,13 +1,13 @@
-export async function getIpfsTokenUri(uri, worker, config) {
-    if (!config.ipfs)
+export async function getIpfsTokenUri(uri) {
+    if (!this.config.ipfs)
         throw new Error(`IPFS configuration is required for getIpfsTokenUri`);
-    const msg = await worker({
+    const msg = await this.worker({
         type: "ipfs",
         version: "0.0.1",
         commissioner: "",
         options: {
             uri: uri,
-            gateway: config.ipfs.httpsGateway,
+            gateway: this.config.ipfs.httpsGateway,
             retry: {
                 retries: 3,
             },

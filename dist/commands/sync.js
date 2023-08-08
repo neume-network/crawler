@@ -1,15 +1,11 @@
 import { JSONRPCClient } from "json-rpc-2.0";
 import ExtractionWorker from "@neume-network/extraction-worker";
-import fs from "fs/promises";
-import { db } from "../database/index.js";
-import path from "path";
-import { getUserContracts } from "../src/utils.js";
-async function getLastSyncedBlock() {
-    const lastId = await db.changeIndex.iterator({ reverse: true, limit: 1 }).next();
-    return lastId ? parseInt(lastId[0].split("/")[0]) : 15000000;
-}
-export default async function (from, to, url, config) {
+import { localStorage, saveLocalStorage } from "../database/localstorage.js";
+import { tracksDB } from "../database/tracks.js";
+const sync = async function (_since, url, config, strategies) {
     const worker = ExtractionWorker(config.worker);
+    const storage = localStorage.sublevel("sync", {});
+    const normalizedUrl = new URL(url).host;
     let client;
     let id = 0;
     client = new JSONRPCClient((jsonRPCRequest) => worker({
@@ -32,24 +28,41 @@ export default async function (from, to, url, config) {
             return Promise.reject(new Error(JSON.stringify(msg.error)));
         return client.receive(msg.results);
     }), () => (++id).toString());
-    let syncFrom = from ?? (await getLastSyncedBlock());
-    console.log("Will sync from", syncFrom, "to", to);
-    // Sync contracts
-    const userContractsNew = await client.request("getUserContracts", null);
-    const userContractsOld = await getUserContracts();
-    const userContracts = { ...userContractsNew, ...userContractsOld };
-    const userContractsPath = path.resolve("./data/contracts.json");
-    await fs.writeFile(userContractsPath, JSON.stringify(userContracts, null, 2));
-    console.log("Updated local list of contracts");
-    for (let syncedTill = syncFrom; syncedTill <= to; syncedTill += 5000) {
-        console.log(`Syncing from ${syncedTill} to ${syncedTill + 5000}`);
-        const returnValues = (await client.request("getIdsChanged_fill", [
-            syncedTill,
-            syncedTill + 5000,
-        ]));
-        await Promise.all(returnValues.map(async (r) => {
-            await db.insert(r.id, r.value);
+    // Assuming localstorage won't be too big in size. We can
+    // ask for everything and update our localstorage.
+    const syncLocalStorage = async (platform) => {
+        const localStorage = await client.request("getLocalStorage", {
+            platform,
+        });
+        await saveLocalStorage(platform, localStorage);
+    };
+    const syncTracks = async (platform, since) => {
+        const { tracks, nextTimestamp } = (await client.request("getTracks", {
+            since,
+            platform,
         }));
-        console.log(`Wrote ${returnValues.length} entries to database`);
-    }
-}
+        // This will either create a new track or merge with the existing track
+        await Promise.all(tracks.map(async (track) => tracksDB.upsertTrack(track)));
+        console.log(`Upserted ${tracks.length} tracks for ${platform}. startTimestamp=${since} nextTimestamp=${nextTimestamp}`);
+        if (nextTimestamp) {
+            await storage.put(`${normalizedUrl}-${platform}`, nextTimestamp);
+            return nextTimestamp;
+        }
+    };
+    await Promise.all(strategies.map(async (strategy) => {
+        let lastSync;
+        try {
+            lastSync = await storage.get(`${normalizedUrl}-${strategy.name}`);
+        }
+        catch (err) {
+            if (err.code !== "LEVEL_NOT_FOUND")
+                throw err;
+        }
+        let since = _since ?? lastSync ?? 0;
+        syncLocalStorage(strategy.name);
+        do {
+            since = await syncTracks(strategy.name, since);
+        } while (since);
+    }));
+};
+export default sync;

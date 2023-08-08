@@ -11,21 +11,28 @@ type LogValue = {
   inputs: Array<any>;
 };
 
+// Checkout this discussion for alternative Database options https://github.com/orgs/neume-network/discussions/29
+
 /**
  * SQL database to store and retrieve tracks.
  */
 export class Tracks {
-  public db: Knex;
+  private db: Knex;
 
   // Used to log all operations. It can be used to regenerate the DB at a particular block number.
-  public log: Level<string, LogValue>;
+  private log?: Level<string, LogValue>;
 
   constructor() {
     this.db = knex.default(config);
 
-    this.log = new Level(resolve("./data/log"), {
-      valueEncoding: "json",
-    });
+    /**
+     * The idea behind log is to record all database operations.
+     * In theory, these operations could be used to replicate the DB's state
+     * at any given time.
+     */
+    // this.log = new Level(resolve("./data/log"), {
+    //   valueEncoding: "json",
+    // });
   }
 
   isTrackPresent = async (uid: string): Promise<Boolean> => {
@@ -33,8 +40,14 @@ export class Tracks {
     return Boolean(rows.length);
   };
 
-  upsertTrack = async (track: Track, blockNumber: number) => {
-    this.db.transaction(async (trx) => {
+  /** Given a track and it's tokenID return true if the token ID is present in the DB. */
+  isTokenPresent = async (uid: string, tokenId: string) => {
+    const rows = await this.db("tokens").select().where({ uid, id: tokenId });
+    return Boolean(rows.length);
+  };
+
+  upsertTrack = async (track: Track, timestamp: number = Date.now()) => {
+    return this.db.transaction(async (trx) => {
       await trx("tracks")
         .insert({
           version: track.version,
@@ -51,24 +64,22 @@ export class Tracks {
           erc721_metadata: track.erc721.metadata,
           erc721_uri: track.erc721.uri,
           uid: track.uid,
-          lastUpdatedAt: blockNumber,
+          lastUpdatedAt: timestamp,
         })
         .onConflict(["uid"])
         .merge();
 
-      await Promise.all(
-        track.manifestations.map((m) =>
-          trx("manifestations")
-            .insert({
-              version: m.version,
-              uri: m.uri,
-              mimetype: m.mimetype,
-              uid: track.uid,
-            })
-            .onConflict(["uid", "uri"])
-            .merge(),
-        ),
-      );
+      await trx("manifestations")
+        .insert(
+          track.manifestations.map((m) => ({
+            version: m.version,
+            uri: m.uri,
+            mimetype: m.mimetype,
+            uid: track.uid,
+          })),
+        )
+        .onConflict(["uid", "uri"])
+        .merge();
 
       await Promise.all(
         track.erc721.tokens.map(async (token) => {
@@ -83,29 +94,27 @@ export class Tracks {
             .onConflict(["uid", "id"])
             .merge();
 
-          await Promise.all(
-            owners.map((o) =>
-              trx("owners")
-                .insert({
-                  blockNumber: o.blockNumber,
-                  from: o.from,
-                  to: o.to,
-                  transactionHash: o.transactionHash,
-                  alias: o.alias,
-                  uid: track.uid,
-                  id: token.id,
-                })
-                .onConflict(["uid", "id", "transactionHash", "to"])
-                .merge(),
-            ),
-          );
+          await trx("owners")
+            .insert(
+              owners.map((o) => ({
+                blockNumber: o.blockNumber,
+                from: o.from,
+                to: o.to,
+                transactionHash: o.transactionHash,
+                alias: o.alias,
+                uid: track.uid,
+                id: token.id,
+              })),
+            )
+            .onConflict(["uid", "id", "transactionHash", "to"])
+            .merge();
         }),
       );
 
-      const inputs = [track, blockNumber];
+      const inputs = [track, timestamp];
 
-      await this.log.put(
-        `${track.platform.name}/${this.encodeNumber(blockNumber)}/${hashCode(
+      await this.log?.put(
+        `${track.platform.name}/${this.encodeNumber(timestamp)}/${hashCode(
           JSON.stringify(inputs),
         )}`,
         {
@@ -121,10 +130,10 @@ export class Tracks {
     tokenId: string,
     owner: Owner,
     platform: string,
-    blockNumber: number,
+    timestamp: number = Date.now(),
   ) => {
-    const inputs = [uid, tokenId, owner, blockNumber];
-    await this.db("tracks").update({ lastUpdatedAt: blockNumber }).where("uid", "=", uid);
+    const inputs = [uid, tokenId, owner, timestamp];
+    await this.db("tracks").update({ lastUpdatedAt: timestamp }).where("uid", "=", uid);
 
     await this.db("owners")
       .insert({
@@ -139,13 +148,52 @@ export class Tracks {
       .onConflict(["uid", "id", "transactionHash", "to"])
       .merge();
 
-    await this.log.put(
-      `${platform}/${this.encodeNumber(blockNumber)}/${hashCode(JSON.stringify(inputs))}`,
+    await this.log?.put(
+      `${platform}/${this.encodeNumber(timestamp)}/${hashCode(JSON.stringify(inputs))}`,
       {
         operation: "upsertOwner",
         inputs,
       },
     );
+  };
+
+  upsertToken = async (uid: string, token: Token, timestamp: number = Date.now()) => {
+    return this.db.transaction(async (trx) => {
+      await trx("tracks").update({ lastUpdatedAt: timestamp }).where("uid", "=", uid);
+
+      await trx("tokens")
+        .insert({
+          id: token.id,
+          uri: token.uri,
+          metadata: token.metadata,
+          uid: uid,
+        })
+        .onConflict(["uid", "id"])
+        .merge();
+
+      await trx("owners")
+        .insert(
+          token.owners.map((o) => ({
+            blockNumber: o.blockNumber,
+            from: o.from,
+            to: o.to,
+            transactionHash: o.transactionHash,
+            alias: o.alias,
+            uid: uid,
+            id: token.id,
+          })),
+        )
+        .onConflict(["uid", "id", "transactionHash", "to"])
+        .merge();
+    });
+  };
+
+  isOwnerPresent = async (uid: string, tokenId: string, owner: Owner) => {
+    const rows = await this.db("owners")
+      .select("*")
+      .where({ uid, id: tokenId, transactionHash: owner.transactionHash, to: owner.to });
+
+    return Boolean(rows.length);
   };
 
   getTrack = async (uid: string): Promise<Track> => {
@@ -191,8 +239,8 @@ export class Tracks {
       .select("*")
       .where("manifestations.uid", "=", uid);
 
-    const tracksRaw = await this.db("tracks").select("*").where("tracks.uid", "=", uid).limit(1);
-    const r = tracksRaw[0];
+    const trackRaw = await this.db("tracks").select("*").where("tracks.uid", "=", uid).limit(1);
+    const r = trackRaw[0];
 
     return {
       version: r.version,
@@ -224,14 +272,18 @@ export class Tracks {
     };
   };
 
-  getTracksChanged = async (from: number, to: number, platform: string): Promise<Track[]> => {
+  getTracksChanged = async (
+    since: number,
+    platform: string,
+  ): Promise<{ tracks: Track[]; nextTimestamp: number | undefined }> => {
+    const MAX_TRACKS = 500;
+
     const uids = await this.db("tracks")
       .select("uid")
-      .where("lastUpdatedAt", ">=", from)
-      .andWhere("lastUpdatedAt", "<=", to)
-      .andWhere("platform_name", "=", platform);
-
-    console.log(uids);
+      .where("lastUpdatedAt", ">=", since)
+      .andWhere("platform_name", "=", platform)
+      .orderBy("lastUpdatedAt", "asc")
+      .limit(MAX_TRACKS);
 
     const tracks = await Promise.all(
       uids.map(async ({ uid }) => {
@@ -239,7 +291,17 @@ export class Tracks {
       }),
     );
 
-    return tracks;
+    const nextTimestampRaw = await this.db("tracks")
+      .select("lastUpdatedAt")
+      .where("lastUpdatedAt", ">=", since)
+      .andWhere("platform_name", "=", platform)
+      .orderBy("lastUpdatedAt", "asc")
+      .offset(MAX_TRACKS)
+      .limit(1);
+
+    const nextTimestamp = nextTimestampRaw[0]?.lastUpdatedAt;
+
+    return { tracks, nextTimestamp };
   };
 
   // LevelDB stores keys in lexicographical order. Therefore,
@@ -253,7 +315,7 @@ export class Tracks {
   // will break for numbers greater than maximum digits. In the
   // above example, the solution will break for numbers greater than 100.
   encodeNumber(num: Number) {
-    const MAX_LENGTH = 10; // TODO: increase this number for polygon
+    const MAX_LENGTH = 20;
     if (num.toString().length > MAX_LENGTH)
       throw new Error(`Database cannot encode number greater than 10 digits`);
     return num.toString().padStart(MAX_LENGTH, "0");
@@ -261,6 +323,10 @@ export class Tracks {
 
   decodeNumber(num: string) {
     return Number(num).toString();
+  }
+
+  async close() {
+    return this.db.destroy();
   }
 }
 
@@ -275,4 +341,8 @@ function hashCode(str: string) {
 }
 
 export const tracksDB = new Tracks();
-// console.dir(await tracksDB.getTrack("polygon/106643/194"), { depth: null });
+// console.dir(await tracksDB.isTokenPresent("polygon/13/492", "1823"), { depth: null });
+
+process.on("exit", async () => {
+  await tracksDB.close();
+});
